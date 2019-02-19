@@ -292,7 +292,7 @@ in_sample_estimate <- function(retX, m, r){
 #Part B Question 1
 ea_volatility <- function(retX_daily){
 	#need to solve for delta
-	
+	#first need number of periods.
 } 
 
 
