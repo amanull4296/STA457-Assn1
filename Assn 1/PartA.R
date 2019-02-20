@@ -290,43 +290,211 @@ in_sample_estimate <- function(retX, m, r){
 }
 
 #Part B Question 1
+
+#	retX_daily: provide the daily log returns only up to the time t
+#				(i.e. the time at which the volatility is to be
+#				 computed)
+
 ea_volatility <- function(retX_daily){
 	#need to solve for delta
-	#first need number of periods.
+	#according to paper delta has been solved for as
+	delta <- 60/61
+	#number of stocks
+	num_stocks <- dim(retX_daily)[1]
+	#number of periods provided
+	t <- dim(retX_daily)[2]
+	#vector to hold the ex ante volatilities
+	ea_sd <- c()
+	#need to iterate over the stocks
+	for (s in seq(1, num_stocks)){
+		#compute the exponentially weighted returns
+		r_bar <- sum((1-delta)*(delta^c(0:260))*
+		rev(retX_daily[s, (t-261):(t-1)]))
+		#next the ex-ante volatility (annualized)
+		#first the variance
+		var <- 261*sum((1-delta)*(delta^c(0:260))*
+		(rev(retX_daily[s, (t-261):(t-1)])-r_bar)^2)
+		#then add the ex-ante volatility of stock s to list
+		ea_sd <- c(ea_sd, sqrt(var))
+	}
+	
+	#return volatilities
+	ea_sd
 } 
 
 
 #Question 2: summarizing performance of the equally weighted
 #	portfolio
-#	retX: 30X(periods) dim matrix of log returns
+#	retX: 30X(periods) dim matrix of monthly log returns
+#	retX_daily: 30X(periods) dim matrix of daily log returns
 
-ew_performance <- function(retX){
+ew_performance <- function(retX, retX_daily){
 	#number of stocks provided
 	num_stocks <- dim(retX)[1]
 	#number of periods of data provided
 	months <- dim(retX)[2]
 	#to hold the ruled returns
 	re <- c()
-	#print(num_stocks)
+	#to hold the cumulative return up to time t
+	cre <- c()
+	#to hold expected return at time t
+	ere <- c()
+	#to hold the ex-ante volatility at time t
+	ea_sd <- c()
+	#to hold sharpe ratio at time t
+	sharpes <- c()
 	#only go up to as long as window can be fit
-	#print(months)
-	#print(seq(1, months - 60, 12))
 	for (i in seq(1, months - 60, 12)){
-		#get optimal dma within 60 month window for all stocks
 		print(i)
+		#get optimal dma within 60 month window for all stocks
 		optimal_dma <- monthlyoptimals_dma(
 		retX[1:num_stocks, i:(i+60-1)])
 		m <- optimal_dma$monthlyoptimals_m
 		r <- optimal_dma$monthlyoptimals_r
-		#print(i)
-		#Ok, now use this to get ruled returns for the 12 months
-		#	after this rolling window
-		#we will iterate through the 12 months following this window
-		#	and iterate through the stocks
+		#need to get the ex-ante volatility every 12 months
+		#since primarily using US stocks, will go by 252 trading
+		#	days a year - 21 days per month
+		print((i+60-1)*21)
+		ea_sd_i <- ea_volatility(
+		retX_daily[1:num_stocks,1:((i+60-1)*21)])
+		#Ok, now we use the optimal trading rules to find the 
+		#	ruled return for each stock
+		#to hold portfolio weights
+		#this is an ew portfolio so all weights are the same
+		weights <- rep(1/num_stocks, num_stocks)
+		
+		#this is the portfolio variance
+		var_t <- 0
+		for (s in seq(1, num_stocks)){
+			var_t <- var_t + (weights[s]^2)*ea_sd_i[s]^2
+		}
+		
+		ea_sd <- c(ea_sd, sqrt(var_t))
+		
+		#going back to old method
 		for (t in seq(i + 60, i + 72 -1)){
 			if (t <= months){
 				re_t <- 0
-				#print(num_stocks)
+				for (s in seq(1, num_stocks)){
+					s_d <- d(m[s], r[s])
+					re_t <- re_t + weights[s]*
+					sign(f(s_d, retX[s, 1:months], t-1))*retX[s,t]
+				}
+				#now add the portfolio ruled return
+				re <- c(re, re_t)
+				if (length(re) > 1){
+					cre <- c(cre, cre[length(cre)] + re_t)
+				}else{
+					cre <- c(cre, re_t)
+				}
+				#expected (annual) return at time t
+				ere <- c(ere, (12*cre[length(cre)]/length(cre)))
+				#as well the sharpe
+				sharpe_t <- (ere[length(ere)]-0.02)/
+				ea_sd[length(ea_sd)]
+				sharpes <- c(sharpes, sharpe_t)
+				#note that since this is a EW portfolio, there is 
+				#	no rebalancing step as weights remain the same 
+			}
+		}
+		
+		
+	}
+	
+	#return results
+	list("return"=ere[length(ere)], 
+	"volatility"=ea_sd[length(ea_sd)], 
+	"sharpe"=sharpes[length(sharpes)], "cumul_return"=cre, 
+	"e_return"=ere, "ea_volatilities"=ea_sd, "sharpes"=sharpes)
+}
+
+#risk parity function
+rp_performance <- function(retX, retX_daily){
+	#number of stocks provided
+	num_stocks <- dim(retX)[1]
+	#number of periods of data provided
+	months <- dim(retX)[2]
+	#to hold the ruled returns
+	re <- c()
+	#to hold the cumulative return up to time t
+	cre <- c()
+	#to hold expected return at time t
+	ere <- c()
+	#to hold the ex-ante volatility at time t
+	ea_sd <- c()
+	#to hold sharpe ratio at time t
+	sharpes <- c()
+	#only go up to as long as window can be fit
+	for (i in seq(1, months - 60, 12)){
+		print(i)
+		#get optimal dma within 60 month window for all stocks
+		optimal_dma <- monthlyoptimals_dma(
+		retX[1:num_stocks, i:(i+60-1)])
+		m <- optimal_dma$monthlyoptimals_m
+		r <- optimal_dma$monthlyoptimals_r
+		#need to get the ex-ante volatility every 12 months
+		#since primarily using US stocks, will go by 252 trading
+		#	days a year - 21 days per month
+		print((i+60-1)*21)
+		ea_sd_i <- ea_volatility(
+		retX_daily[1:num_stocks,1:((i+60-1)*21)])
+		#Ok, now we use the optimal trading rules to find the 
+		#	ruled return for each stock
+		#to hold portfolio weights
+		#this is an ew portfolio so all weights are the same
+		temp <- 1/ea_sd_i
+		weights <- temp/sum(temp)
+		
+		#this is the portfolio variance
+		var_t <- 0
+		for (s in seq(1, num_stocks)){
+			var_t <- var_t + (weights[s]^2)*ea_sd_i[s]^2
+		}
+		
+		ea_sd <- c(ea_sd, sqrt(var_t))
+		
+		#going back to old method
+		for (t in seq(i + 60, i + 72 -1)){
+			if (t <= months){
+				re_t <- 0
+				for (s in seq(1, num_stocks)){
+					s_d <- d(m[s], r[s])
+					re_t <- re_t + weights[s]*
+					sign(f(s_d, retX[s, 1:months], t-1))*retX[s,t]
+				}
+				#now add the portfolio ruled return
+				re <- c(re, re_t)
+				if (length(re) > 1){
+					cre <- c(cre, cre[length(cre)] + re_t)
+				}else{
+					cre <- c(cre, re_t)
+				}
+				#expected (annual) return at time t
+				ere <- c(ere, (12*cre[length(cre)]/length(cre)))
+				#as well the sharpe
+				sharpe_t <- (ere[length(ere)]-0.02)/
+				ea_sd[length(ea_sd)]
+				sharpes <- c(sharpes, sharpe_t)
+				#note that since this is a EW portfolio, there is 
+				#	no rebalancing step as weights remain the same 
+			}
+		}
+		
+		
+	}
+	
+	#return results
+	list("return"=ere[length(ere)], 
+	"volatility"=ea_sd[length(ea_sd)], 
+	"sharpe"=sharpes[length(sharpes)], "cumul_return"=cre, 
+	"e_return"=ere, "ea_volatilities"=ea_sd, "sharpes"=sharpes)
+}
+
+#Junk code:
+'''
+		for (t in seq(i + 60, i + 72 -1)){
+			if (t <= months){
+				re_t <- 0
 				for (s in seq(1, num_stocks)){
 					s_d <- d(m[s], r[s])
 					re_t <- re_t + (1/num_stocks)*
@@ -338,33 +506,7 @@ ew_performance <- function(retX){
 				#	no rebalancing step as weights remain the same 
 			}
 		}
-	}
-	#the above will give me the ruled returns - can use this to
-	#	get realized return...
-	#note that annualized expected return, volatility and sharpe
-	#	ratio are needed
-	#we can get the monthly expected return as follows:
-	realized_ret <- sum(re)/length(re)
-	#can convert this to annual as follows:
-	realized_ret <- 12*realized_ret
-	#question is though how I get the annualized volatility?
-	#do I just get the volatility of the assets from the returns
-	#	data and then just sum (1/30)^2*volatility, then annualize?
-	#do this for now...
-	volatility <- 0
-	for (s in seq(1, num_stocks)){
-		volatility <- volatility + (1/30)^2*(sd(retX[s, 1:months]))^2
-	}
-	#convert to annualized
-	volatility <- sqrt(12)*sqrt(volatility)
-	#next is annualized sharpe ratio
-	#assuming 0.02 annual-risk free for this assn
-	sharpe <- (realized_ret - 0.02)/volatility
-	#return results
-	list("return"=realized_ret, "volatility"=volatility,
-	 "sharpe"=sharpe)
-}
-
+'''
 
 #--------------------------------------------------------------
 # Test functions here...
@@ -373,17 +515,17 @@ ew_performance <- function(retX){
 #need to download the csv file data
 #code for it:
 #change work directory for reading file...
-workDirect <- "/Users/amanull9/Documents/STA457/Assignments/Assn 1/DJ Data Monthly"
+workDirect <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Monthly"
 setwd(workDirect)
 #get the data for any one of the constituents - using KO for now
 KOdat <- read.csv(file = "KO.csv", header = T, sep=",")
 #change back to current directory
-workDirect <- "/Users/amanull9/Documents/STA457/Assignments/Assn 1"
+workDirect <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
 setwd(workDirect)
 
 #test getAdC function
-dataDir <- "/Users/amanull9/Documents/STA457/Assignments/Assn 1/DJ Data Monthly"
-currDir <- "/Users/amanull9/Documents/STA457/Assignments/Assn 1"
+dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Monthly"
+currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
 
 monthlydata <- getAdC(dataDir, currDir)
 tickers <- monthlydata$tickers
@@ -447,8 +589,25 @@ dj_tradestats_table <- t(rbind(tickers, round(dj_tradestats$djER,4),  round(dj_t
 
 colnames(dj_tradestats_table)[2:5] <- c("theoretical return",  "expected return","theoretical hold", "expected hold")
 
+
+#test the ea_volatilties
+#first need to download the daily data
+#test getAdC function
+dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Daily"
+currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
+
+dailydata <- getAdC(dataDir, currDir)
+dtickers <- dailydata$tickers
+dprices <- dailydata$prices
+dlogrets <- dailydata$logrets
+
+#ok now that I have the data, test the volatility function
+ea_sd_t1 <- ea_volatility(dlogrets)
+#ok it is outputting something, dunno if I am doing correctly
+
+#Now test the ewperformances
 #test ew function
-dj_ew_performance <- ew_performance(mlogrets)
+dj_ew_performance <- ew_performance(mlogrets, dlogrets)
 
 #code for having this in a table
 dj_ew_performance_table <- t(rbind(round(dj_ew_performance$return,4),  round(dj_ew_performance$volatility,4), round(dj_ew_performance$sharpe,4)))
@@ -456,3 +615,23 @@ dj_ew_performance_table <- t(rbind(round(dj_ew_performance$return,4),  round(dj_
 colnames(dj_ew_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
 
 #kinda slow but at least have an output...
+#also performance does not seem good, am I doing something wrong?
+
+#hmm - check for risk parity and see if it is still bad
+dj_rp_performance <- rp_performance(mlogrets, dlogrets)
+
+#code for having this in a table
+dj_rp_performance_table <- t(rbind(round(dj_rp_performance$return,4),  round(dj_rp_performance$volatility,4), round(dj_rp_performance$sharpe,4)))
+
+colnames(dj_rp_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
+
+#code for plots...
+par(mfrow = c(2,2))
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return")
+lines(c(61:dim(mlogrets)[2]), dj_rp_performance$cumul_return, col="blue")
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$e_return, main = "annualized expected returns", type = 'l', xlab = "month", ylab="annualized expected return")
+lines(c(61:dim(mlogrets)[2]), dj_rp_performance$e_return, col="blue")
+plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility")
+lines(seq(61,dim(mlogrets)[2],12), dj_rp_performance$ea_volatilities, col="blue")
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio")
+lines(c(61:dim(mlogrets)[2]), dj_rp_performance$sharpes, col="blue")
