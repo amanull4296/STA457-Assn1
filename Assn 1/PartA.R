@@ -128,10 +128,19 @@ getAdC <- function(dataDir, currDir){
 		 header = T, sep=",")
 		#then get adjusted close prices from file
 		price <- stockdat[1:dim(stockdat)[1], 6] 
-		prices <- rbind(prices, price)
+		if (length(prices) < 1){
+			prices <- price
+		}else{
+			prices <- rbind(prices, price)
+		}
 		#also the log returns
-		logrets <- rbind(logrets, 
-		log(price[2:length(price)]/price[1:(length(price)-1)]))
+		if (length(logrets) < 1){
+			logrets <- log(price[2:length(price)]/
+			price[1:(length(price)-1)])
+		}else{
+			logrets <- rbind(logrets, log(price[2:length(price)]/
+			price[1:(length(price)-1)]))
+		}
 	}
 	#return to original directory
 	setwd(currDir)
@@ -291,29 +300,29 @@ in_sample_estimate <- function(retX, m, r){
 
 #Part B Question 1
 
-#	retX_daily: provide the daily log returns only up to the time t
+#	retX: provide the daily log returns only up to the time t
 #				(i.e. the time at which the volatility is to be
 #				 computed)
 
-ea_volatility <- function(retX_daily){
+ea_volatility <- function(retX){
 	#need to solve for delta
 	#according to paper delta has been solved for as
-	delta <- 60/61
+	delta <- 0.2
 	#number of stocks
-	num_stocks <- dim(retX_daily)[1]
+	num_stocks <- dim(retX)[1]
 	#number of periods provided
-	t <- dim(retX_daily)[2]
+	t <- dim(retX)[2]
 	#vector to hold the ex ante volatilities
 	ea_sd <- c()
 	#need to iterate over the stocks
 	for (s in seq(1, num_stocks)){
 		#compute the exponentially weighted returns
-		r_bar <- sum((1-delta)*(delta^c(0:260))*
-		rev(retX_daily[s, (t-261):(t-1)]))
+		r_bar <- sum((1-delta)*(delta^c(0:11))*
+		rev(retX[s, (t-12):(t-1)]))
 		#next the ex-ante volatility (annualized)
 		#first the variance
-		var <- 261*sum((1-delta)*(delta^c(0:260))*
-		(rev(retX_daily[s, (t-261):(t-1)])-r_bar)^2)
+		var <- 12*sum((1-delta)*(delta^c(0:11))*
+		(rev(retX[s, (t-12):(t-1)])-r_bar)^2)
 		#then add the ex-ante volatility of stock s to list
 		ea_sd <- c(ea_sd, sqrt(var))
 	}
@@ -326,9 +335,8 @@ ea_volatility <- function(retX_daily){
 #Question 2: summarizing performance of the equally weighted
 #	portfolio
 #	retX: 30X(periods) dim matrix of monthly log returns
-#	retX_daily: 30X(periods) dim matrix of daily log returns
 
-ew_performance <- function(retX, retX_daily){
+ew_performance <- function(retX){
 	#number of stocks provided
 	num_stocks <- dim(retX)[1]
 	#number of periods of data provided
@@ -352,11 +360,8 @@ ew_performance <- function(retX, retX_daily){
 		m <- optimal_dma$monthlyoptimals_m
 		r <- optimal_dma$monthlyoptimals_r
 		#need to get the ex-ante volatility every 12 months
-		#since primarily using US stocks, will go by 252 trading
-		#	days a year - 21 days per month
-		print((i+60-1)*21)
 		ea_sd_i <- ea_volatility(
-		retX_daily[1:num_stocks,1:((i+60-1)*21)])
+		retX[1:num_stocks,1:(i+60-1)])
 		#Ok, now we use the optimal trading rules to find the 
 		#	ruled return for each stock
 		#to hold portfolio weights
@@ -409,7 +414,7 @@ ew_performance <- function(retX, retX_daily){
 }
 
 #risk parity function
-rp_performance <- function(retX, retX_daily){
+rp_performance <- function(retX){
 	#number of stocks provided
 	num_stocks <- dim(retX)[1]
 	#number of periods of data provided
@@ -433,11 +438,8 @@ rp_performance <- function(retX, retX_daily){
 		m <- optimal_dma$monthlyoptimals_m
 		r <- optimal_dma$monthlyoptimals_r
 		#need to get the ex-ante volatility every 12 months
-		#since primarily using US stocks, will go by 252 trading
-		#	days a year - 21 days per month
-		print((i+60-1)*21)
 		ea_sd_i <- ea_volatility(
-		retX_daily[1:num_stocks,1:((i+60-1)*21)])
+		retX[1:num_stocks,1:(i+60-1)])
 		#Ok, now we use the optimal trading rules to find the 
 		#	ruled return for each stock
 		#to hold portfolio weights
@@ -590,24 +592,9 @@ dj_tradestats_table <- t(rbind(tickers, round(dj_tradestats$djER,4),  round(dj_t
 colnames(dj_tradestats_table)[2:5] <- c("theoretical return",  "expected return","theoretical hold", "expected hold")
 
 
-#test the ea_volatilties
-#first need to download the daily data
-#test getAdC function
-dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Daily"
-currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
-
-dailydata <- getAdC(dataDir, currDir)
-dtickers <- dailydata$tickers
-dprices <- dailydata$prices
-dlogrets <- dailydata$logrets
-
-#ok now that I have the data, test the volatility function
-ea_sd_t1 <- ea_volatility(dlogrets)
-#ok it is outputting something, dunno if I am doing correctly
-
 #Now test the ewperformances
 #test ew function
-dj_ew_performance <- ew_performance(mlogrets, dlogrets)
+dj_ew_performance <- ew_performance(mlogrets)
 
 #code for having this in a table
 dj_ew_performance_table <- t(rbind(round(dj_ew_performance$return,4),  round(dj_ew_performance$volatility,4), round(dj_ew_performance$sharpe,4)))
@@ -618,7 +605,7 @@ colnames(dj_ew_performance_table)[1:3] <- c("Annualized expected return",  "Annu
 #also performance does not seem good, am I doing something wrong?
 
 #hmm - check for risk parity and see if it is still bad
-dj_rp_performance <- rp_performance(mlogrets, dlogrets)
+dj_rp_performance <- rp_performance(mlogrets)
 
 #code for having this in a table
 dj_rp_performance_table <- t(rbind(round(dj_rp_performance$return,4),  round(dj_rp_performance$volatility,4), round(dj_rp_performance$sharpe,4)))
@@ -627,11 +614,11 @@ colnames(dj_rp_performance_table)[1:3] <- c("Annualized expected return",  "Annu
 
 #code for plots...
 par(mfrow = c(2,2))
-plot(c(61:dim(mlogrets)[2]), dj_ew_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return")
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return", ylim = c(-0.10, 0.30))
 lines(c(61:dim(mlogrets)[2]), dj_rp_performance$cumul_return, col="blue")
 plot(c(61:dim(mlogrets)[2]), dj_ew_performance$e_return, main = "annualized expected returns", type = 'l', xlab = "month", ylab="annualized expected return")
 lines(c(61:dim(mlogrets)[2]), dj_rp_performance$e_return, col="blue")
-plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility")
+plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility", ylim = c(0, 0.04))
 lines(seq(61,dim(mlogrets)[2],12), dj_rp_performance$ea_volatilities, col="blue")
-plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio")
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio", ylim = c(-7, 6))
 lines(c(61:dim(mlogrets)[2]), dj_rp_performance$sharpes, col="blue")
