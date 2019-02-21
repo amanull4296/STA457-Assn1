@@ -2,10 +2,11 @@
 title: "STA457H1F Assignment 1"
 author: 
 - "Ahmed Nawaz Amanullah, St.# 1001325773"
-- "Ling Long, St.# ####"
+- "Ling Long, St.# 1002516618"
 date: "February 24, 2019"
 output: pdf_document
 ---
+
 
 # Part A
 ## Question 1
@@ -379,8 +380,7 @@ tickers <- monthlydata$tickers
 mprices <- monthlydata$prices
 mlogrets <- monthlydata$logrets
 
-dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Daily"
-currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
+dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Monthly"
 
 dailydata <- getAdC(dataDir, currDir)
 dtickers <- dailydata$tickers
@@ -479,7 +479,7 @@ in_sample_estimate <- function(retX, m, r){
 ```
 
 The results are disclosed below as well:
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning = FALSE, message=FALSE, error=TRUE}
 dj_tradestats <- in_sample_estimate(mlogrets,dj_optimals$monthlyoptimals_m,dj_optimals$monthlyoptimals_r)
 
 #Ok outputting something which is good
@@ -708,39 +708,39 @@ rp_performance <- function(retX, retX_daily){
 The performance results obtained implementing the function above is as follows:
 
 
-```{r, echo=FALSE, fig.width = 7, fig.height = 7}
-dj_ew_performance <- ew_performance(mlogrets, dlogrets)
-
-#code for having this in a table
-dj_ew_performance_table <- t(rbind(round(dj_ew_performance$return,4),  round(dj_ew_performance$volatility,4), round(dj_ew_performance$sharpe,4)))
-
-colnames(dj_ew_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
-
-#kinda slow but at least have an output...
-#also performance does not seem good, am I doing something wrong?
-
-#hmm - check for risk parity and see if it is still bad
-dj_rp_performance <- rp_performance(mlogrets, dlogrets)
-
-#code for having this in a table
-dj_rp_performance_table <- t(rbind(round(dj_rp_performance$return,4),  round(dj_rp_performance$volatility,4), round(dj_rp_performance$sharpe,4)))
-
-colnames(dj_rp_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
-
-#code for plots...
-par(mfrow = c(2,2))
-plot(c(61:dim(mlogrets)[2]), dj_ew_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return")
-lines(c(61:dim(mlogrets)[2]), dj_rp_performance$cumul_return, col="blue")
-plot(c(61:dim(mlogrets)[2]), dj_ew_performance$e_return, main = "annualized expected returns", type = 'l', xlab = "month", ylab="annualized expected return")
-lines(c(61:dim(mlogrets)[2]), dj_rp_performance$e_return, col="blue")
-plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility")
-lines(seq(61,dim(mlogrets)[2],12), dj_rp_performance$ea_volatilities, col="blue")
-plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio")
-lines(c(61:dim(mlogrets)[2]), dj_rp_performance$sharpes, col="blue")
-
-#kable
-kable(dj_ew_performance_table, caption = "EW performance metrics")
-kable(dj_rp_performance_table, caption = "RP performance metrics")
+```{r, echo=FALSE, fig.width = 7, fig.height = 7, warning = FALSE, message=FALSE, error=TRUE}
+# dj_ew_performance <- ew_performance(mlogrets, dlogrets)
+# 
+# #code for having this in a table
+# dj_ew_performance_table <- t(rbind(round(dj_ew_performance$return,4),  round(dj_ew_performance$volatility,4), round(dj_ew_performance$sharpe,4)))
+# 
+# colnames(dj_ew_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
+# 
+# #kinda slow but at least have an output...
+# #also performance does not seem good, am I doing something wrong?
+# 
+# #hmm - check for risk parity and see if it is still bad
+# dj_rp_performance <- rp_performance(mlogrets, dlogrets)
+# 
+# #code for having this in a table
+# dj_rp_performance_table <- t(rbind(round(dj_rp_performance$return,4),  round(dj_rp_performance$volatility,4), round(dj_rp_performance$sharpe,4)))
+# 
+# colnames(dj_rp_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
+# 
+# #code for plots...
+# par(mfrow = c(2,2))
+# plot(c(61:dim(mlogrets)[2]), dj_ew_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return")
+# lines(c(61:dim(mlogrets)[2]), dj_rp_performance$cumul_return, col="blue")
+# plot(c(61:dim(mlogrets)[2]), dj_ew_performance$e_return, main = "annualized expected returns", type = 'l', xlab = "month", ylab="annualized expected return")
+# lines(c(61:dim(mlogrets)[2]), dj_rp_performance$e_return, col="blue")
+# plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility")
+# lines(seq(61,dim(mlogrets)[2],12), dj_rp_performance$ea_volatilities, col="blue")
+# plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio")
+# lines(c(61:dim(mlogrets)[2]), dj_rp_performance$sharpes, col="blue")
+# 
+# #kable
+# kable(dj_ew_performance_table, caption = "EW performance metrics")
+# kable(dj_rp_performance_table, caption = "RP performance metrics")
 ```
 
 # Part B
@@ -791,3 +791,162 @@ ea_volatility <- function(retX_daily){
 } 
 ```
 
+## Question 2
+
+In this section, we will consider the predictive regression that regresses the (excess) return in month t on its return lagged by h months:
+
+$$\frac{r_{s,t}}{\sigma_{s,t-1}} = a + b_{h}\cdot sign(r_{s, t-h}) + \xi_{s,t}   $$
+  where $r_{s,t}$ denotes the s-th stock in the DJ constituents and the returns are scaled by the ex-ante volatilities, i.e. $\sigma_{s, t-1}$ as calculated above in question 1 of this section. We want to determine the optimal value of $h$ for all 30 DJ constituents. The idea is, for each of the constituents, we try every possible h value from 1- 12x19(228) (since our possible months lag is from 1 - 12x19 years).
+  
+```
+predictive_regression <- function(retX, retX_daily)
+```
+
+## Question 3
+Similar to Part A question 2, we will construct a time series momentum (TSMOM) trading
+strategy weighted portfolio using the 30 DJ constituents and summarize the performance.
+
+Again, performance will be based on a 60-month rolling window and the portfolio will be rebalanced monthly.  The parameters ($\sigma$) will be calibrated/ estimated at the end of each year.
+
+The following assumptions are going to be made:
+
+  1. The 60-month window will be used to get optimal trading rules.
+  
+  2. These optimal signals will be used to predict the signals for next month.
+  
+  3. The last 261 days of window to calibrate the asset volatilities as described in Question 1 of Part B.
+  
+  4. We will use predicted signal and portfolio weights to get rule return of portfolio (see hint).
+  
+  5. Check performance of next month using predicted signal.  Since we recalibrate parameters annually (i.e. at end of each year), we will re-calculate the ex-ante volatilities every 12 months.
+  
+  6. The 60-month window moves 1 months ahead (as we rebalance monthly as per general instructions) and we repeat (1-5).  Process terminates when we reach the end of our data.
+  
+Here, we have that the returns are determined as:
+$$
+r_{t,t+1}^{TSMOM} = \frac{1}{30} \sum_{s=1}^{30}sign(r_{s,t-h_{s}:t})\cdot \frac{40\%}{\sigma_{s,t}}r_{s,t:t+1}
+$$
+where we have that:
+$$
+B_{s,t} = sign(r_{s,t-h_{s}:t})\cdot \frac{40 \%}{\sigma_{s,t}}
+$$
+is our position for the $s$-th constituent at time $t$ and $r_{h_{s}:t-h_{s}:t}$ denotes the $h_{s}$-month lagged returns observed at time $t$. As per the hint given, we take $h_{s} = 12$ for all 30 constituents.
+```{r results = "hide"}
+tsmom_performance <- function(retX, retX_daily){
+  #number of stocks provided
+  num_stocks <- dim(retX)[1]
+  #number of periods of data provided
+  months <- dim(retX)[2]
+  #to hold the ruled returns
+  re <- c()
+  #to hold the cumulative return up to time t
+  cre <- c()
+  #to hold expected return at time t
+  ere <- c()
+  #to hold the ex-ante volatility at time t
+  ea_sd <- c()
+  #to hold sharpe ratio at time t
+  sharpes <- c()
+  #only go up to as long as window can be fit
+  for (i in seq(1, months - 60, 12)){
+    #get optimal dma within 60 month window for all stocks
+    optimal_dma <- monthlyoptimals_dma(
+      retX[1:num_stocks, i:(i+60-1)])
+    m <- optimal_dma$monthlyoptimals_m
+    r <- optimal_dma$monthlyoptimals_r
+    #need to get the ex-ante volatility every 12 months
+    #since primarily using US stocks, will go by 252 trading
+    #	days a year - 21 days per month
+    ea_sd_i <- ea_volatility(
+      retX_daily[1:num_stocks,1:((i+60-1)*21)])
+    #Ok, now we use the optimal trading rules to find the 
+    #	ruled return for each stock
+    #to hold portfolio weights
+    #this is an ew portfolio so all weights are the same
+    weights <- rep(1/num_stocks, num_stocks)
+    
+    #this is the portfolio variance
+    var_t <- 0
+    for (s in seq(1, num_stocks)){
+      var_t <- var_t + (weights[s]^2)*ea_sd_i[s]^2
+    }
+    
+    ea_sd <- c(ea_sd, sqrt(var_t))
+    #going back to old method
+    for (t in seq(i + 60, i + 72 -1)){
+      if (t <= months){
+        re_t <- 0
+        for (s in seq(1, num_stocks)){
+          re_t <- re_t + sign(retX[s, t] - retX[s, t-12])*(0.4/ea_sd_i[s])*retX[s,t]
+        }
+        #now add the portfolio ruled return
+        re <- c(re, re_t)
+        if (length(re) > 1){
+          cre <- c(cre, cre[length(cre)] + re_t)
+        }else{
+          cre <- c(cre, re_t)
+        }
+        #expected (annual) return at time t
+        ere <- c(ere, (12*cre[length(cre)]/length(cre)))
+        #as well the sharpe
+        sharpe_t <- (ere[length(ere)]-0.02)/
+          ea_sd[length(ea_sd)]
+        sharpes <- c(sharpes, sharpe_t)
+        #note that since this is a EW portfolio, there is 
+        #	no rebalancing step as weights remain the same 
+      }
+    }
+    
+    
+  }
+  
+  #return results
+  list("return"=ere[length(ere)], 
+       "volatility"=ea_sd[length(ea_sd)], 
+       "sharpe"=sharpes[length(sharpes)], "cumul_return"=cre, 
+       "e_return"=ere, "ea_volatilities"=ea_sd, "sharpes"=sharpes)
+}
+```
+```{r, echo=FALSE, fig.width = 7, fig.height = 7, warning = FALSE, message=FALSE, error=TRUE}
+ea_v <- ea_volatility(dlogrets)
+dj_tsmom_performance <- tsmom_performance(mlogrets, dlogrets)
+dj_tsmom_performance_table <- t(rbind(round(dj_tsmom_performance$return,4),  round(dj_tsmom_performance$volatility,4), round(dj_tsmom_performance$sharpe,4)))
+colnames(dj_tsmom_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
+
+dj_ew_performance <- ew_performance(mlogrets, dlogrets)
+#code for having this in a table
+dj_ew_performance_table <- t(rbind(round(dj_ew_performance$return,4),  round(dj_ew_performance$volatility,4), round(dj_ew_performance$sharpe,4)))
+
+colnames(dj_ew_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
+
+#kinda slow but at least have an output...
+#also performance does not seem good, am I doing something wrong?
+
+#hmm - check for risk parity and see if it is still bad
+dj_rp_performance <- rp_performance(mlogrets, dlogrets)
+
+#code for having this in a table
+dj_rp_performance_table <- t(rbind(round(dj_rp_performance$return,4),  round(dj_rp_performance$volatility,4), round(dj_rp_performance$sharpe,4)))
+
+colnames(dj_rp_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
+
+#code for plots...
+par(mfrow = c(2,2))
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return")
+lines(c(61:dim(mlogrets)[2]), dj_rp_performance$cumul_return, col="blue")
+lines(c(61:dim(mlogrets)[2]), dj_tsmom_performance$cumul_return, col="red")
+
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$e_return, main = "annualized expected returns", type = 'l', xlab = "month", ylab="annualized expected return")
+lines(c(61:dim(mlogrets)[2]), dj_rp_performance$e_return, col="blue")
+lines(c(61:dim(mlogrets)[2]), dj_tsmom_performance$e_return, col="red")
+plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility")
+lines(seq(61,dim(mlogrets)[2],12), dj_rp_performance$ea_volatilities, col="blue")
+lines(seq(61,dim(mlogrets)[2],12), dj_tsmom_performance$ea_volatilities, col="red")
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio")
+lines(c(61:dim(mlogrets)[2]), dj_rp_performance$sharpes, col="blue")
+lines(c(61:dim(mlogrets)[2]), dj_tsmom_performance$sharpes, col="red")
+
+#kable
+kable(dj_ew_performance_table, caption = "EW performance metrics")
+kable(dj_rp_performance_table, caption = "RP performance metrics")
+```
