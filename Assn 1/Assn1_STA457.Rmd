@@ -9,7 +9,7 @@ output: pdf_document
 
 # Part A
 ## Question 1
-In this section, we will find the optimal double moving average (MA) trading rules for all 30 DJ constituents using monthly data.  As hinted by the assignment, we will refer to the Fall 2018 assignment to implement this.  We will proceed in chronological order of said assignment in order to gain understanding of this question.  
+In this section, we will find the optimal double moving average (MA) trading rules for all 30 DJ constituents using monthly data.  As hinted by the assignment, we will refer to the Fall 2018 assignment and implement the chronological steps necessary to retrieving these optimal values. 
 
 We will predict the direction of the trend of asset prices using a function of past asset prices $F_t$, which will be converted to buy and sell trading signals $B_t$, with buy corresponding to +1 and sell to -1.  $F_t$ will be based on a moving-average technical indicator, which can be expressed as a function of log returns:
 
