@@ -120,27 +120,8 @@ muF <- function(d, X){
 
 ```
 
-###Step 3: Derive autocorrelation function at lag one for predictor
-The expression for the autocorrelation function for lag 1 is derived as follows:
 
-$$\rho_F(1) = corr(F_t, F_{t - 1}) = \frac{cov(F_t, F_{t - 1})}{var(F_t)}$$
-
-First the covariance expression,
-
-$$cov(F_t, F_{t - 1})= corr(\sum_{i=0}^{m-2} d_iX_{t-i}, \sum_{i=0}^{m-2} d_iX_{t-1-i})$$
-$$= d_0cov(X_t, \sum_{i=0}^{m-2} d_iX_{t-1-i}) + d_1cov(X_{t-1}, \sum_{i=0}^{m-2} d_iX_{t-1-i}) + ... + d_{m-2}cov(X_{t-m+2}, \sum_{i=0}^{m-2} d_iX_{t-1-i})$$
-$$= d_0(d_0\gamma_1 + d_1\gamma_2 + ... + d_{m-2}\gamma_{m-1}) + d_1(d_0\gamma_0 + d_1\gamma_1 + d_2\gamma_2 + ... + d_{m-2}\gamma_{m-2}) + ... + d_{m-2}(d_0\gamma_{m-3} + d_1\gamma_{m-4} + ... + d_{m-2}\gamma_1)$$
-$$= \gamma_0\left\{ d_0(d_0\rho_1 + d_1\rho_2 + ... + d_{m-2}\rho_{m-1}) +  ... + d_{m-2}(d_0\rho_{m-3} + d_1\rho_{m-4} + ... + d_{m-2}\rho_1) \right\}$$
-$$= \gamma_0\sum_{i = 0}^{m-2}\sum_{j = 0}^{m-2}d_id_j\rho_{j - 1 - i}$$
-
-Then the autocorrelation function:
-
-$$\rho_F(1) = \frac{cov(F_t, F_{t - 1})}{var(F_t)}$$
-$$= \frac{\gamma_0\sum_{i = 0}^{m-2}\sum_{j = 0}^{m-2}d_id_j\rho_{j - 1 - i}}{var(F_t)}$$
-
-Provided below is the R code for computing the lag one autocorrelation of the predictor:
-
-```{r results = "hide"}
+```{r, echo = FALSE}
 #Step 3: Computing ACF(1) of forecaster
 #will use a quadratic form
 # d: vector of dj coefficients (j = 0, ..., m-2)
@@ -156,28 +137,18 @@ rhoF <- function(d, X){
 	rhoF <- temp/varF(d, X)
 	rhoF
 }
+
+#expected holding period
+#rho is lag one autocorrelation
+#provided by step 3
+Hold <- function(rho){
+	Hold <- pi/acos(rho)
+}
+
 ```
 
-Additionally note that as with when computing the variance of the predictor, a similar approach utilizing matrix multiplication is being used above:
 
-$$cov(F_t, F_{t-1}) =
-\left[\begin{array}{ccc}
-        d_0 & ... & d_{m-2}
-        \end{array}\right]
-\left[\begin{array}{cccc}
-        \gamma_1 & ... & ... &\gamma_{m-1}\\
-        ... & ... & ...& ...\\
-        ... & ... & ...& ...\\
-        \gamma_{m-3} & ... & \gamma_0 & \gamma_1
-        \end{array}\right]
-\left[\begin{array}{c}
-        d_0\\
-        ...\\
-        d_{m-2}
-      \end{array}\right]
-$$
-
-###Step 4: Computing the expected ruled returns and expected holding period length
+###Step 3: Computing the expected ruled returns
 
 Under the assumption that $X_t$ follows a stationary Gaussian process, the expected ruled returns has been provided as follows:
 
@@ -192,7 +163,7 @@ $$= \frac{\gamma_0\sum_{i=0}^{m-2}d_i\rho_{i+1}}{\sqrt{\gamma_0var(F_t)}}$$
 The R code for implementing this computation is as follows:
 
 ```{r results = "hide"}
-#Step 4 Intermediate: correlation between X_t and F_{t-1}
+#Step 3 Intermediate: correlation between X_t and F_{t-1}
 #will use a quadratic form
 # d: vector of dj coefficients (j = 0, ..., m-2)
 # X: log returns
@@ -205,28 +176,11 @@ corXF <- function(d, X){
 }
 ```
 
-Additionally, the unconditional variance of the ruled returns has been provided as:
 
-$$var(R_t) = E(X_t^2) - E(R_t)^2 = \sigma_X^2 + \mu_X^2 - E(R_t)^2$$
-
-Furthermore, as provided, Kedem (1986) shows that the expected zero-crossing rate for a discrete-time, zero-mean, stationary Gaussian sequence $Z_t$ is given by:
-
-$$\frac{1}{\pi}cos^{-1}\rho_Z(1)$$
-
-where $\rho_Z(1)$ denotes the autocorrelation function of $\left\{Z_t\right\}$ at lag one.  Using this result, we may approximate the expected length of the holding period to be:
-
-$$H = \frac{\pi}{cos^{-1}\rho_F(1)}$$
-
-Provided below is the R code for the computation of the expected holding period, the double MA co-efficients and the expected ruled returns:
+Provided below is the R code for the computation of the double MA co-efficients and the expected ruled returns:
 
 ```{r results = "hide"}
-#Step 4: Expected holding period and ruled returns
-#expected holding period
-#rho is lag one autocorrelation
-#provided by step 3
-Hold <- function(rho){
-	Hold <- pi/acos(rho)
-}
+#Step 3: Expected ruled returns
 
 #next is the double MA co-efficients
 d <- function(m, r){
@@ -249,21 +203,16 @@ ruleReturn <- function(retX, m, r){
 	vF <- sqrt(varF(d(m, r), retX))
 	#lag 1 correlation (rho) between X_t and F_{t-1}
 	rXF <- corXF(d(m, r), retX)
-	#lag 1 correlation of predictor
-	rF <- rhoF(d(m, r), retX)
 	#expected return
 	ER <- sqrt(2/pi)*vX*rXF*exp(-mF*mF/(vF*vF)) + 
 	mX*(1-2*pnorm(-mF/vF))
-	#expected hold duration
-	H <- Hold(rF)
 	#return results
-	list("ER" = ER, "H" = H, "rhoF" = rF, "VF"= vF, "muF"=mF, 
-	"corXF"=rXF)
+	list("ER" = ER, "VF"= vF, "muF"=mF, "corXF"=rXF)
 }
 
 ```
 
-###Step 5: Downloading the monthly data of the constituents
+###Step 4: Downloading the monthly data of the constituents
 The data for the DJ constituents were downloaded from Yahoo Finance in csv files and stored in a folder.  The R code for retrieving this data from the csv files is as follows:
 
 ```{r results = "hide"}
@@ -311,7 +260,7 @@ getAdC <- function(dataDir, currDir){
 
 ```
 
-###Step 6: Writing R function to find optimal monthly double MA trading rules
+###Step 5: Writing R function to find optimal monthly double MA trading rules
 Provided below are the R functions utilized to find the optimal double MA trading rules using monthly data:
 
 ```{r results = "hide"}
@@ -366,13 +315,41 @@ monthlyoptimals_dma <- function(retsX){
 	#return optimal rules
 	list("monthlyoptimals_m"=m, "monthlyoptimals_r"=r)
 }
+
+#the version for the getting the optimal rules for each window
+
+#	retsX: the log returns of the constituents 
+
+windowsmonthlyoptimals_dma <- function(retX){
+	#number of stock
+	num_stocks <- dim(retX)[1]
+	#the number of periods
+	months <- dim(retX)[2]
+	#hold optimal m's and r's
+	m <- matrix(,nrow = num_stocks, ncol = 1)
+	r <- matrix(,nrow = num_stocks, ncol = 1)
+	for (i in seq(1, months - 60, 12)){
+		#get optimal dma within 60 month window for all stocks
+		optimal_dma <- monthlyoptimals_dma(
+		retX[1:num_stocks, i:(i+60-1)])
+		if(i == 1){
+			m[1:num_stocks, 1] <- optimal_dma$monthlyoptimals_m
+			r[1:num_stocks, 1] <- optimal_dma$monthlyoptimals_r	
+		}else{
+			m <- cbind(m, optimal_dma$monthlyoptimals_m)
+			r <- cbind(r, optimal_dma$monthlyoptimals_r)
+		}
+	}
+	
+	list("m"=m, "r"=r)
+}
 ```
 
-Disclosed below are the optimal trading rules found for the constituents:
+Disclosed below are the optimal trading rules found for the constituents, using all the log return data:
 
 ```{r, echo=FALSE}
-dataDir <- "~/GitHub/STA457-Assn1/Assn 1/DJ Data Monthly"
-currDir <- "~/GitHub/STA457-Assn1/Assn 1"
+dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Monthly"
+currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
 
 monthlydata <- getAdC(dataDir, currDir)
 tickers <- monthlydata$tickers
@@ -394,96 +371,24 @@ kable(djoptimals_table, caption = "DJ double MA optimal trading rules")
 
 ```
 
-###Step 7: Writing R function to compute in-sample trading statistics and compare with theoretical results
+The optimal trading rules using the 60 months rolling window are provided below as well:
+```{r, echo = FALSE}
+windowsdj_optimals <- windowsmonthlyoptimals_dma(mlogrets)
 
-Please find below the functions implemented in R to generate the in-sample as well as theoretical trade statistics (cumulative return and holding time) for the optimal trade rules derived earlier.
+#construct table
+optimal_ms <- cbind(tickers, windowsdj_optimals$m)
 
-```{r results = "hide"}
-#functions for computing in-sample trading statistics 
-#	(i.e. cumulative return and holding time)
-#	to later compare with theoretical results
-#first function to compute the predictor
+#column names
+colnames(optimal_ms)[2:dim(optimal_ms)[2]] <- seq(1999, 1999+dim(optimal_ms)[2]-2, 1)
 
-#	d: d is d(m ,r) - presumably the optimal ones found
-#	retX: the log returns
-#	t: get signal at time t
+#construct table
+optimal_rs <- cbind(tickers, windowsdj_optimals$r)
 
-f <- function(d, retX, t){
-	M <- length(d) - 1
-	if (t >= M){
-		output <- sum(d*rev(retX[(t-M):t]))
-		output
-	}
-	else {print('t is smaller than M')}
-}
+#column names
+colnames(optimal_rs)[2:dim(optimal_rs)[2]] <- seq(1999, 1999+dim(optimal_ms)[2]-2, 1)
 
-#next the realized return
-#	d: d is d(m ,r) - presumably the optimal ones found
-#	retX: the log returns
-realized_ret <- function(d, retX){
-	re <- c()
-	M <- length(d)
-	for (t in seq(M + 1,length(retX))){
-		re <- c(re, sign(f(d, retX, t-1))*retX[t])
-	}
-	realized_ret <- sum(re)/length(M:length(retX))
-	realized_ret
-}
-
-#next is the holding period
-holding_period <- function(d, retX){
-	num_change <- 0
-	M <- length(d)
-	for (t in seq(M+1, length(retX))){
-		if (sign(f(d, retX,t)) != sign(f(d, retX,t-1))){
-			num_change <- num_change + 1
-		}
-	}
-	hold <- length(M:length(retX))/num_change
-	hold
-}
-
-#function that will take in the array of log returns 
-#	and the optimal trading decisions
-in_sample_estimate <- function(retX, m, r){
-	#number of tickers
-	num_stocks <- dim(retX)[1]
-	#number of periods/ months
-	#to hold in_sample and theoretical values
-	djER <- c()
-	djH <- c()
-	djISR <- c()
-	djISH <- c()
-	months <- dim(retX)[2]
-	for (i in seq(1, num_stocks)){
-		ruleReturn_i <- ruleReturn(retX[i, 1:months], m[i], r[i])
-		djER <- c(djER, ruleReturn_i$ER)
-		djH <- c(djH, ruleReturn_i$H)
-		djISR <- c(djISR, 
-		realized_ret(d(m[i],r[i]),retX[i, 1:months]))
-		djISH <- c(djISH, 
-		holding_period(d(m[i],r[i]),retX[i, 1:months]))
-	}
-	#return estimated and theoretical values 
-	list("djER"=djER ,"djH"=djH, "djISR"=djISR, "djISH"=djISH)
-}
-
-```
-
-The results are disclosed below as well:
-```{r, echo=FALSE}
-dj_tradestats <- in_sample_estimate(mlogrets,dj_optimals$monthlyoptimals_m,dj_optimals$monthlyoptimals_r)
-
-#Ok outputting something which is good
-
-#code for having this in a table
-dj_tradestats_table <- t(rbind(tickers, round(dj_tradestats$djER,4),  round(dj_tradestats$djISR,4), round(dj_tradestats$djH,3), round(dj_tradestats$djISH,3)))
-
-colnames(dj_tradestats_table)[2:5] <- c("theoretical return",  "expected return","theoretical hold", "expected hold")
-
-#kable
-kable(dj_tradestats_table, caption = "DJ double MA optimal trading rules statistics")
-
+kable(optimal_ms, caption = "Optimal m's for the rolling windows")
+kable(optimal_rs, caption = "Optimal r's for the rolling windows")
 ```
 
 ## Question 2
@@ -537,6 +442,22 @@ ea_volatility <- function(retX){
 ```
 
 ```{r results = "hide"}
+#first function to compute the predictor
+
+#	d: d is d(m ,r) - presumably the optimal ones found
+#	retX: the log returns
+#	t: get signal at time t
+
+f <- function(d, retX, t){
+	M <- length(d) - 1
+	if (t >= M){
+		output <- sum(d*rev(retX[(t-M):t]))
+		output
+	}
+	else {print('t is smaller than M')}
+}
+
+
 #Question 2: summarizing performance of the equally weighted
 #	portfolio
 #	retX: 30X(periods) dim matrix of monthly log returns
@@ -697,7 +618,7 @@ rp_performance <- function(retX){
 
 ```
 
-The performance results obtained implementing the function above is as follows:
+The performance results obtained implementing the function above is as follows (note that in the plots presented, the black line corresponds to the equally weighted portfolio and the blue to the risk parity portfolio):
 
 
 ```{r, echo=FALSE, fig.width = 7, fig.height = 7}
@@ -777,6 +698,7 @@ ea_volatility <- function(retX){
 	ea_sd
 } 
 ```
+
 ## Question 2
 
 In this section, we will consider the predictive regression that regresses the (excess) return in month t on its return lagged by h months:
@@ -971,13 +893,13 @@ colnames(dj_tsmom_performance_table)[1:3] <- c("Annualized expected return",  "A
 
 #code for plots...
 par(mfrow = c(2,2))
-plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return", ylim = c(0, 0.8))
+plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return")
 
 plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$e_return, main = "annualized expected returns", type = 'l', xlab = "month", ylab="annualized expected return")
 
-plot(seq(61,dim(mlogrets)[2],12), dj_tsmom_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility", ylim = c(0, 0.04))
+plot(seq(61,dim(mlogrets)[2],12), dj_tsmom_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility")
 
-plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio", ylim = c(0, 10))
+plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio")
 
  
 #kable
@@ -1007,6 +929,13 @@ $$= h\sum_{i = 0}^{m-2}d_i(\gamma_{i+1}+E(r_t)^2)$$
 The R-code for the computation of the expected *h*-period holding period return is as follows:
 
 ```{r results = "hide"}
+#Function to compute the expected h-period holding period return
+
+# retX: monthly log return
+# m: long-term MA
+# r: short-term MA
+# h: holding period
+
 e_hperiod_holdperiodreturn <- function(retX, m, r, h){
 	#get auto-covariances
 	acfs <- acf(retX, plot = F, type = "covariance", lag.max = m)$acf
@@ -1025,6 +954,9 @@ In this section we will find the optimal double MA for all 30 DJ constituents th
 ```{r results = "hide"}
 #Ques 2: optimal double MA for 30 DJ constituents maximizing 
 #	12-period holding period return.
+
+# retX: monthly log returns
+
 monthlyoptimalEHR_dma <- function(retX){
 	#to hold optimal m and r
 	optimal_m <- 2
@@ -1049,6 +981,8 @@ monthlyoptimalEHR_dma <- function(retX){
 	list("monthlyoptimal_m"=optimal_m, "monthlyoptimal_r"=optimal_r)
 }
 
+# retsX: monthly log returns
+
 monthlyoptimalsEHR_dma <- function(retsX){
 	#to hold the optimal trading rules
 	m <- c()
@@ -1067,7 +1001,38 @@ monthlyoptimalsEHR_dma <- function(retsX){
 	#return optimal rules
 	list("monthlyoptimals_m"=m, "monthlyoptimals_r"=r)
 }
+
+#the version for the getting the optimal rules for each window
+
+# retX: monthly log returns
+
+windowsmonthlyoptimalsEHR_dma <- function(retX){
+	#number of stock
+	num_stocks <- dim(retX)[1]
+	#the number of periods
+	months <- dim(retX)[2]
+	#hold optimal m's and r's
+	m <- matrix(,nrow = num_stocks, ncol = 1)
+	r <- matrix(,nrow = num_stocks, ncol = 1)
+	for (i in seq(1, months - 60, 12)){
+		#get optimal dma within 60 month window for all stocks
+		optimal_dma <- monthlyoptimalsEHR_dma(
+		retX[1:num_stocks, i:(i+60-1)])
+		if(i == 1){
+			m[1:num_stocks, 1] <- optimal_dma$monthlyoptimals_m
+			r[1:num_stocks, 1] <- optimal_dma$monthlyoptimals_r	
+		}else{
+			m <- cbind(m, optimal_dma$monthlyoptimals_m)
+			r <- cbind(r, optimal_dma$monthlyoptimals_r)
+		}
+	}
+	
+	list("m"=m, "r"=r)
+}
+
 ```
+
+Disclosed below are the trading rules for optimal expected 12-period holding period return for the constituents, using all the log return data:
 
 ```{r, echo=FALSE}
 #get optimals for all 30 constituents
@@ -1082,4 +1047,24 @@ colnames(djoptimalsEHR_table)[2:3] <- c("m", "r")
 #kable
 kable(djoptimalsEHR_table, caption = "DJ double MA trading rules for optimal expected 12-period holding period return")
 
+```
+
+The optimal trading rules using the 60 months rolling window are provided below as well:
+```{r, echo = FALSE}
+windowsdj_optimals <- windowsmonthlyoptimalsEHR_dma(mlogrets)
+
+#construct table
+optimal_ms <- cbind(tickers, windowsdj_optimals$m)
+
+#column names
+colnames(optimal_ms)[2:dim(optimal_ms)[2]] <- seq(1999, 1999+dim(optimal_ms)[2]-2, 1)
+
+#construct table
+optimal_rs <- cbind(tickers, windowsdj_optimals$r)
+
+#column names
+colnames(optimal_rs)[2:dim(optimal_rs)[2]] <- seq(1999, 1999+dim(optimal_ms)[2]-2, 1)
+
+kable(optimal_ms, caption = "Optimal m's for the rolling windows")
+kable(optimal_rs, caption = "Optimal r's for the rolling windows")
 ```

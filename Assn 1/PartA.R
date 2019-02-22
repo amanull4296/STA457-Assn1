@@ -229,6 +229,31 @@ monthlyoptimals_dma <- function(retsX){
 	list("monthlyoptimals_m"=m, "monthlyoptimals_r"=r)
 }
 
+#the version for the getting the optimal rules for each window
+windowsmonthlyoptimals_dma <- function(retX){
+	#number of stock
+	num_stocks <- dim(retX)[1]
+	#the number of periods
+	months <- dim(retX)[2]
+	#hold optimal m's and r's
+	m <- matrix(,nrow = num_stocks, ncol = 1)
+	r <- matrix(,nrow = num_stocks, ncol = 1)
+	for (i in seq(1, months - 60, 12)){
+		#get optimal dma within 60 month window for all stocks
+		optimal_dma <- monthlyoptimals_dma(
+		retX[1:num_stocks, i:(i+60-1)])
+		if(i == 1){
+			m[1:num_stocks, 1] <- optimal_dma$monthlyoptimals_m
+			r[1:num_stocks, 1] <- optimal_dma$monthlyoptimals_r	
+		}else{
+			m <- cbind(m, optimal_dma$monthlyoptimals_m)
+			r <- cbind(r, optimal_dma$monthlyoptimals_r)
+		}
+	}
+	
+	list("m"=m, "r"=r)
+}
+
 #functions for computing in-sample trading statistics 
 #	(i.e. cumulative return and holding time)
 #	to later compare with theoretical results
@@ -573,6 +598,32 @@ monthlyoptimalsEHR_dma <- function(retsX){
 	list("monthlyoptimals_m"=m, "monthlyoptimals_r"=r)
 }
 
+#the version for the getting the optimal rules for each window
+windowsmonthlyoptimalsEHR_dma <- function(retX){
+	#number of stock
+	num_stocks <- dim(retX)[1]
+	#the number of periods
+	months <- dim(retX)[2]
+	#hold optimal m's and r's
+	m <- matrix(,nrow = num_stocks, ncol = 1)
+	r <- matrix(,nrow = num_stocks, ncol = 1)
+	for (i in seq(1, months - 60, 12)){
+		#get optimal dma within 60 month window for all stocks
+		optimal_dma <- monthlyoptimalsEHR_dma(
+		retX[1:num_stocks, i:(i+60-1)])
+		if(i == 1){
+			m[1:num_stocks, 1] <- optimal_dma$monthlyoptimals_m
+			r[1:num_stocks, 1] <- optimal_dma$monthlyoptimals_r	
+		}else{
+			m <- cbind(m, optimal_dma$monthlyoptimals_m)
+			r <- cbind(r, optimal_dma$monthlyoptimals_r)
+		}
+	}
+	
+	list("m"=m, "r"=r)
+}
+
+
 #--------------------------------------------------------------
 # Test functions here...
 #--------------------------------------------------------------
@@ -626,6 +677,21 @@ djoptimals_table <- t(rbind(tickers, dj_optimals$monthlyoptimals_m,dj_optimals$m
 
 #column names
 colnames(djoptimals_table)[2:3] <- c("m", "r")
+
+#test the windows version
+windowsdj_optimals <- windowsmonthlyoptimals_dma(mlogrets)
+
+#construct table
+optimal_ms <- cbind(tickers, windowsdj_optimals$m)
+
+#column names
+colnames(optimal_ms)[2:dim(optimal_ms)[2]] <- seq(1999, 1999+dim(optimal_ms)[2]-2, 1)
+
+#construct table
+optimal_rs <- cbind(tickers, windowsdj_optimals$r)
+
+#column names
+colnames(optimal_rs)[2:dim(optimal_rs)[2]] <- seq(1999, 1999+dim(optimal_ms)[2]-2, 1)
 
 #Ok ques 1 done, have optimal dma trading rules for all 30 
 #	constituents above!
@@ -699,3 +765,18 @@ djoptimalsEHR_table <- t(rbind(tickers, dj_optimalsEHR$monthlyoptimals_m,dj_opti
 
 #column names
 colnames(djoptimalsEHR_table)[2:3] <- c("m", "r")
+
+#test the windows version
+windowsdj_optimals <- windowsmonthlyoptimalsEHR_dma(mlogrets)
+
+#construct table
+optimal_ms <- cbind(tickers, windowsdj_optimals$m)
+
+#column names
+colnames(optimal_ms)[2:dim(optimal_ms)[2]] <- seq(1999, 1999+dim(optimal_ms)[2]-2, 1)
+
+#construct table
+optimal_rs <- cbind(tickers, windowsdj_optimals$r)
+
+#column names
+colnames(optimal_rs)[2:dim(optimal_rs)[2]] <- seq(1999, 1999+dim(optimal_ms)[2]-2, 1)
