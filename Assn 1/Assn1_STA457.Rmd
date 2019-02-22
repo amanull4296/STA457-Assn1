@@ -1,8 +1,8 @@
 ---
 title: "STA457H1F Assignment 1"
 author: 
-- "Ahmed Nawaz Amanullah, St.# 1001325773"
-- "Ling Long, St.# ####"
+- "Ahmed Nawaz Amanullah (team lead), St.# 1001325773"
+- "Ling Long (team member), St.# 1002516618"
 date: "February 24, 2019"
 output: pdf_document
 ---
@@ -239,7 +239,7 @@ d <- function(m, r){
 # r: short-term MA
 
 ruleReturn <- function(retX, m, r){
-	#returns variance
+	#returns varianced             
 	vX <- sd(retX)
 	#returns mean
 	mX <- mean(retX)
@@ -371,8 +371,8 @@ monthlyoptimals_dma <- function(retsX){
 Disclosed below are the optimal trading rules found for the constituents:
 
 ```{r, echo=FALSE}
-dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Monthly"
-currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
+dataDir <- "~/GitHub/STA457-Assn1/Assn 1/DJ Data Monthly"
+currDir <- "~/GitHub/STA457-Assn1/Assn 1"
 
 monthlydata <- getAdC(dataDir, currDir)
 tickers <- monthlydata$tickers
@@ -776,6 +776,213 @@ ea_volatility <- function(retX){
 	#return volatilities
 	ea_sd
 } 
+```
+## Question 2
+
+In this section, we will consider the predictive regression that regresses the (excess) return in month t on its return lagged by h months:
+$$\frac{r_{s,t}}{\sigma_{s,t-1}} = \alpha + \beta_{h}\cdot \frac{r_{s, t-h}}{\sigma_{s,t-h}} + \epsilon_{s,t}   $$
+and 
+
+$$\frac{r_{s,t}}{\sigma_{s,t-1}} = a + b_{h}\cdot sign(r_{s, t-h}) + \xi_{s,t}   $$
+  where $r_{s,t}$ denotes the s-th stock in the DJ constituents and the returns are scaled by the ex-ante volatilities, i.e. $\sigma_{s, t-1}$ as calculated above in question 1 of this section. We want to determine the optimal value of $h$ for all 30 DJ constituents. For simplicity, as specified in the assignment sheet, we only use the latter formula as specified above.
+
+We compute $\sigma_{s,t}$ for all possible combinations s, t before we loop through potential h values, in order to reduce computational time. Since we now use the past 12 months of data to calculate the variance, we actually range through 12x18 months instead of 12x19.
+
+First, we use the $ea_volatility$ function defined in part 1 to construct our matrix of ex-ante volatilities, since we need the volatility one step backwards in time at any point for our regression model. We implement this by simply looping over the possible months, and computing the volatility at each point and putting it into a matrix.
+
+```{r results = "hide"}
+ea_volatility_monthly <- function(retX){
+  months <- dim(retX)[2]
+  numStocks <- 30
+  res <- c()
+  
+  for (t in c(13:228)){
+    value <- ea_volatility(retX[1:numStocks, 1:t])
+    res <- cbind(res, c(value))
+  }
+
+  return(res)
+}
+```
+
+Here, we use our function from above to pre-compute volatilies. In order to build the regression, we simply build datasets for every possible time lag h. For example, for h = 1, we will build a dataset with every possible value of t such that t-h is above 0, so that we can build a regression model using $r_{s,t}$ as the dependant variable, and our $sign(r_{s,t-h})$ as our independant variable. In order to judge the linear models for each value of H, we use the R-squared value, with higher being better. We note that building the dataset in this way tends to skew the optimal h-values in favor of larger h. If h is larger, the set of data points which we can build our model with is restricted, and it is possible that the linear model built using a smaller set of data points is very linear (having an R-squared value of close to 1), and as such will be chosen as our optimal H. 
+
+```{r results = "hide"}
+predictive_regression <- function(retX){
+  num_stocks <- 30
+  #number of periods of data provided
+  
+  optimal_h <- c()
+  volatilities <- ea_volatility_monthly(mlogrets)
+  months <- dim(volatilities)[2]
+  
+  for (s in c(1:num_stocks)){
+     max_r <- 0
+     best_h <- c(50)
+     for (h in seq(1,228-12)){
+         y <- c()
+         x <- c()
+         for (t in seq(h, months)){
+            y <- c(y, (retX[s, t+1]/volatilities[s, t]))
+            x <- c(x, sign(retX[s, t-h+1]))
+         }
+
+         relation <- data.frame("x" = x, "y" = y)
+
+         linearMode <- lm(y ~ x, data = relation)
+         rsquared <- summary(linearMode)$r.squared
+ 
+         if (rsquared > max_r){
+           max_r = rsquared
+           best_h <- c(h)
+         } 
+     }
+     optimal_h <- c(optimal_h, best_h)
+  }
+  return(optimal_h)
+}
+```
+
+```{r, echo=FALSE}
+# get volatility matrix{s,t}
+volatilities_matrix <- ea_volatility_monthly(mlogrets)
+
+# do the regressions and get the optimal h values
+optimal_h_values <- predictive_regression(mlogrets)
+
+#construct table
+optimal_h_table <- t(rbind(tickers, optimal_h_values))
+
+#column names
+colnames(optimal_h_table)[2] <- c("Optimal H Value")
+
+#kable
+kable(optimal_h_table, caption = "Optimal H values for each of the 30 DJ constituents")
+
+```
+
+
+
+## Question 3
+Similar to Part A question 2, we will construct a time series momentum (TSMOM) trading
+strategy weighted portfolio using the 30 DJ constituents and summarize the performance.
+
+Again, performance will be based on a 60-month rolling window and the portfolio will be rebalanced monthly.  The parameters ($\sigma$) will be calibrated/ estimated at the end of each year. In order to display the performance, we show the cumulative log returns, annualized expected returns, annualized ex ante volatilities, and sharpe ratio.
+
+The following assumptions are going to be made:
+
+  1. The 60-month window rolling window will be applied to the model.
+  
+  2. The last 12 months of data will be used to calculate our signal to predict the next month..
+  
+  3. The last 12 months will be used calibrate the asset volatilities as described in Question 1 of Part B.
+  
+  4. We will use predicted signal and portfolio weights to get rule return of portfolio.
+  
+  5. Check performance of next month using predicted signal.  Since we recalibrate parameters annually (i.e. at end of each year), we will re-calculate the ex-ante volatilities every 12 months.
+  
+  6. The 60-month window moves 1 months ahead (as we rebalance monthly as per general instructions) and we repeat (1-5).  Process terminates when we reach the end of our data.
+  
+Here, we have that the returns are determined as:
+$$
+r_{t,t+1}^{TSMOM} = \frac{1}{30} \sum_{s=1}^{30}sign(r_{s,t-h_{s}:t})\cdot \frac{40\%}{\sigma_{s,t}}r_{s,t:t+1}
+$$
+where we have that:
+$$
+B_{s,t} = sign(r_{s,t-h_{s}:t})\cdot \frac{40 \%}{\sigma_{s,t}}
+$$
+is our position for the $s$-th constituent at time $t$ and $r_{h_{s}:t-h_{s}:t}$ denotes the $h_{s}$-month lagged returns observed at time $t$. As per the hint given, we take $h_{s} = 12$ for all 30 constituents.
+
+``` {r results = 'hide'}
+tsmom_performance <- function(retX){
+  #number of stocks provided
+  num_stocks <- dim(retX)[1]
+  #number of periods of data provided
+  months <- dim(retX)[2]
+  #to hold the ruled returns
+  re <- c()
+  #to hold the cumulative return up to time t
+  cre <- c()
+  #to hold expected return at time t
+  ere <- c()
+  #to hold the ex-ante volatility at time t
+  ea_sd <- c()
+  #to hold sharpe ratio at time t
+  sharpes <- c()
+  #only go up to as long as window can be fit
+  for (i in seq(1, months - 60, 12)){
+    ea_sd_i <- ea_volatility(
+      retX[1:num_stocks,1:(i+60-1)])
+    #Ok, now we use the optimal trading rules to find the 
+    #ruled return for each stock
+    #to hold portfolio weights
+    # weigh them as 0.4/volatility
+    temp <- 0.4/ea_sd_i
+    weights <- temp/sum(temp)
+    
+    #this is the portfolio variance
+    var_t <- 0
+    for (s in seq(1, num_stocks)){
+      var_t <- var_t + (weights[s]^2)*ea_sd_i[s]^2
+    }
+    
+    ea_sd <- c(ea_sd, sqrt(var_t))
+    
+    for (t in seq(i + 60, i + 72 -1)){
+      if (t <= months){
+        re_t <- 0
+        for (s in seq(1, num_stocks)){
+          re_t <- re_t +  weights[s]*sign(sum(retX[s,t-12:t]))*(0.4/ea_sd_i[s])*retX[s,t]
+        }
+        #now add the portfolio ruled return
+        re <- c(re, re_t)
+        if (length(re) > 1){
+          cre <- c(cre, cre[length(cre)] + re_t)
+        }else{
+          cre <- c(cre, re_t)
+        }
+        #expected (annual) return at time t
+        ere <- c(ere, (12*cre[length(cre)]/length(cre)))
+        #as well the sharpe
+        sharpe_t <- (ere[length(ere)]-0.02)/
+          ea_sd[length(ea_sd)]
+        sharpes <- c(sharpes, sharpe_t)
+      }
+    }
+  }
+  
+  #return results
+  list("return"=ere[length(ere)], 
+       "volatility"=ea_sd[length(ea_sd)], 
+       "sharpe"=sharpes[length(sharpes)], "cumul_return"=cre, 
+       "e_return"=ere, "ea_volatilities"=ea_sd, "sharpes"=sharpes)
+}
+
+```
+
+
+```{r, echo=FALSE, fig.width = 7, fig.height = 7}
+dj_tsmom_performance <- tsmom_performance(mlogrets)
+
+#code for having this in a table
+dj_tsmom_performance_table <- t(rbind(round((dj_tsmom_performance$return)/10,4),  round((dj_tsmom_performance$volatility),4), round(((dj_tsmom_performance$sharpe)/10),4)))
+
+colnames(dj_tsmom_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
+
+#code for plots...
+par(mfrow = c(2,2))
+plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return", ylim = c(0, 0.8))
+
+plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$e_return, main = "annualized expected returns", type = 'l', xlab = "month", ylab="annualized expected return")
+
+plot(seq(61,dim(mlogrets)[2],12), dj_tsmom_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility", ylim = c(0, 0.04))
+
+plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio", ylim = c(0, 10))
+
+ 
+#kable
+kable(dj_tsmom_performance_table, caption = "EW performance metrics")
+
 ```
 
 #Part C
