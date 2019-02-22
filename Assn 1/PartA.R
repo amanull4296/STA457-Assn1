@@ -510,6 +510,67 @@ rp_performance <- function(retX){
 		}
 '''
 
+#Part C
+#Ques 1: compute the expected h-period holding period return
+
+#	retX: the monthly log returns
+#	m and r: the double MA parameters
+#	h: the holding periods
+
+e_hperiod_holdperiodreturn <- function(retX, m, r, h){
+	#get auto-covariances
+	acfs <- acf(retX, plot = F, type = "covariance", lag.max = m)$acf
+	#get expected holding period return
+	ehphpr <- h*sum(d(m,r)*acfs[2:length(acfs)])
+	#return value
+	ehphpr
+}
+
+#Ques 2: optimal double MA for 30 DJ constituents maximizing 
+#	12-period holding period return.
+monthlyoptimalEHR_dma <- function(retX){
+	#to hold optimal m and r
+	optimal_m <- 2
+	optimal_r <- 1
+	#get ruleReturn for this setting
+	currEHR <- e_hperiod_holdperiodreturn(retX, 
+	optimal_m, optimal_r, 12)
+	#iterate up to 12 max as we are doing monthly
+	#loop through r
+	for (i in seq(1, 11)){
+		for (j in seq(i+1, 12)){
+			EHRij <- e_hperiod_holdperiodreturn(retX, 
+			j, i, 12)
+			if (EHRij > currEHR){
+				optimal_m <- j
+				optimal_r <- i
+				currEHR <- EHRij
+			} 
+		}
+	}
+	#return optimal double MA trading rules
+	list("monthlyoptimal_m"=optimal_m, "monthlyoptimal_r"=optimal_r)
+}
+
+monthlyoptimalsEHR_dma <- function(retsX){
+	#to hold the optimal trading rules
+	m <- c()
+	r <- c()
+	#amount of tickers to go through
+	numstocks <- dim(retsX)[1]
+	#number of periods/ months
+	months <- dim(retsX)[2]
+	for (i in seq(1, numstocks)){
+		optimals <- monthlyoptimalEHR_dma(retsX[i, 1:months])
+		#add optimals to list
+		m <- c(m, optimals$monthlyoptimal_m)
+		r <- c(r, optimals$monthlyoptimal_r)
+	} 
+	
+	#return optimal rules
+	list("monthlyoptimals_m"=m, "monthlyoptimals_r"=r)
+}
+
 #--------------------------------------------------------------
 # Test functions here...
 #--------------------------------------------------------------
@@ -622,3 +683,17 @@ plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "ann
 lines(seq(61,dim(mlogrets)[2],12), dj_rp_performance$ea_volatilities, col="blue")
 plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio", ylim = c(-7, 6))
 lines(c(61:dim(mlogrets)[2]), dj_rp_performance$sharpes, col="blue")
+
+#test expected h-period holding period ret:
+ehphpr_test <- e_hperiod_holdperiodreturn(mlogrets[1, 1:dim(mlogrets)[2]], 3, 2, 12)
+
+#eh, seems to be outputting something so ok...
+#So now will go ahead and finish up ques 3
+#get optimals for all 30 constituents
+dj_optimalsEHR <- monthlyoptimalsEHR_dma(mlogrets)
+
+#construct table
+djoptimalsEHR_table <- t(rbind(tickers, dj_optimalsEHR$monthlyoptimals_m,dj_optimalsEHR$monthlyoptimals_r))
+
+#column names
+colnames(djoptimalsEHR_table)[2:3] <- c("m", "r")

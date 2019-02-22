@@ -379,14 +379,6 @@ tickers <- monthlydata$tickers
 mprices <- monthlydata$prices
 mlogrets <- monthlydata$logrets
 
-dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Daily"
-currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
-
-dailydata <- getAdC(dataDir, currDir)
-dtickers <- dailydata$tickers
-dprices <- dailydata$prices
-dlogrets <- dailydata$logrets
-
 #get optimals for all 30 constituents
 dj_optimals <- monthlyoptimals_dma(mlogrets)
 
@@ -505,36 +497,36 @@ The following assumptions are going to be made:
   
   2. Will use these optimal settings to predict the signals for next month
   
-  3. For risk parity, will use the last 261 days of window to calibrate the asset volatilities (see section B) as brought up earlier.
+  3. For risk parity, will use the last 12 months of window to calibrate the asset volatilities (see section B) as brought up earlier.
   
   4. Use predicted signal and portfolio weights to get rule return of portfolio (see hint).
   
-  5. Check performance of next month using predicted signal.  Since we recalibrate parameters annually (i.e. at end of each year), we will re-calculate the ex-ante volatilities every 12 months.
+  5. Check performance of next 12 months using predicted signals.    Since we recalibrate parameters annually (i.e. at end of each year), we will re-calculate the ex-ante volatilities every 12 months.
   
-  6. The 60-month window moves 1 months ahead (as we rebalance monthly as per general instructions) and we repeat (1-5).  Process terminates when we reach the end of our data.
+  6. The 60-month window moves 12 months ahead and we repeat (1-5).  Process terminates when we reach the end of our data.
   
 Please find the implementation of these steps for the equally weighted portfolio as follows:
 
 ```{r, echo = FALSE}
-ea_volatility <- function(retX_daily){
+ea_volatility <- function(retX){
 	#need to solve for delta
 	#according to paper delta has been solved for as
-	delta <- 60/61
+	delta <- 0.2
 	#number of stocks
-	num_stocks <- dim(retX_daily)[1]
+	num_stocks <- dim(retX)[1]
 	#number of periods provided
-	t <- dim(retX_daily)[2]
+	t <- dim(retX)[2]
 	#vector to hold the ex ante volatilities
 	ea_sd <- c()
 	#need to iterate over the stocks
 	for (s in seq(1, num_stocks)){
 		#compute the exponentially weighted returns
-		r_bar <- sum((1-delta)*(delta^c(0:260))*
-		rev(retX_daily[s, (t-261):(t-1)]))
+		r_bar <- sum((1-delta)*(delta^c(0:11))*
+		rev(retX[s, (t-12):(t-1)]))
 		#next the ex-ante volatility (annualized)
 		#first the variance
-		var <- 261*sum((1-delta)*(delta^c(0:260))*
-		(rev(retX_daily[s, (t-261):(t-1)])-r_bar)^2)
+		var <- 12*sum((1-delta)*(delta^c(0:11))*
+		(rev(retX[s, (t-12):(t-1)])-r_bar)^2)
 		#then add the ex-ante volatility of stock s to list
 		ea_sd <- c(ea_sd, sqrt(var))
 	}
@@ -545,7 +537,11 @@ ea_volatility <- function(retX_daily){
 ```
 
 ```{r results = "hide"}
-ew_performance <- function(retX, retX_daily){
+#Question 2: summarizing performance of the equally weighted
+#	portfolio
+#	retX: 30X(periods) dim matrix of monthly log returns
+
+ew_performance <- function(retX){
 	#number of stocks provided
 	num_stocks <- dim(retX)[1]
 	#number of periods of data provided
@@ -568,10 +564,8 @@ ew_performance <- function(retX, retX_daily){
 		m <- optimal_dma$monthlyoptimals_m
 		r <- optimal_dma$monthlyoptimals_r
 		#need to get the ex-ante volatility every 12 months
-		#since primarily using US stocks, will go by 252 trading
-		#	days a year - 21 days per month
 		ea_sd_i <- ea_volatility(
-		retX_daily[1:num_stocks,1:((i+60-1)*21)])
+		retX[1:num_stocks,1:(i+60-1)])
 		#Ok, now we use the optimal trading rules to find the 
 		#	ruled return for each stock
 		#to hold portfolio weights
@@ -624,7 +618,7 @@ ew_performance <- function(retX, retX_daily){
 }
 
 #risk parity function
-rp_performance <- function(retX, retX_daily){
+rp_performance <- function(retX){
 	#number of stocks provided
 	num_stocks <- dim(retX)[1]
 	#number of periods of data provided
@@ -647,10 +641,8 @@ rp_performance <- function(retX, retX_daily){
 		m <- optimal_dma$monthlyoptimals_m
 		r <- optimal_dma$monthlyoptimals_r
 		#need to get the ex-ante volatility every 12 months
-		#since primarily using US stocks, will go by 252 trading
-		#	days a year - 21 days per month
 		ea_sd_i <- ea_volatility(
-		retX_daily[1:num_stocks,1:((i+60-1)*21)])
+		retX[1:num_stocks,1:(i+60-1)])
 		#Ok, now we use the optimal trading rules to find the 
 		#	ruled return for each stock
 		#to hold portfolio weights
@@ -709,7 +701,7 @@ The performance results obtained implementing the function above is as follows:
 
 
 ```{r, echo=FALSE, fig.width = 7, fig.height = 7}
-dj_ew_performance <- ew_performance(mlogrets, dlogrets)
+dj_ew_performance <- ew_performance(mlogrets)
 
 #code for having this in a table
 dj_ew_performance_table <- t(rbind(round(dj_ew_performance$return,4),  round(dj_ew_performance$volatility,4), round(dj_ew_performance$sharpe,4)))
@@ -720,7 +712,7 @@ colnames(dj_ew_performance_table)[1:3] <- c("Annualized expected return",  "Annu
 #also performance does not seem good, am I doing something wrong?
 
 #hmm - check for risk parity and see if it is still bad
-dj_rp_performance <- rp_performance(mlogrets, dlogrets)
+dj_rp_performance <- rp_performance(mlogrets)
 
 #code for having this in a table
 dj_rp_performance_table <- t(rbind(round(dj_rp_performance$return,4),  round(dj_rp_performance$volatility,4), round(dj_rp_performance$sharpe,4)))
@@ -729,13 +721,13 @@ colnames(dj_rp_performance_table)[1:3] <- c("Annualized expected return",  "Annu
 
 #code for plots...
 par(mfrow = c(2,2))
-plot(c(61:dim(mlogrets)[2]), dj_ew_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return")
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$cumul_return, main = "cumulative log returns", type ="l", xlab = "month", ylab="cumulative return", ylim = c(-0.10, 0.30))
 lines(c(61:dim(mlogrets)[2]), dj_rp_performance$cumul_return, col="blue")
 plot(c(61:dim(mlogrets)[2]), dj_ew_performance$e_return, main = "annualized expected returns", type = 'l', xlab = "month", ylab="annualized expected return")
 lines(c(61:dim(mlogrets)[2]), dj_rp_performance$e_return, col="blue")
-plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility")
+plot(seq(61,dim(mlogrets)[2],12), dj_ew_performance$ea_volatilities, main = "annualized ex ante volatilities", type = 'l', xlab = "month", ylab="annualized ex ante volatility", ylim = c(0, 0.04))
 lines(seq(61,dim(mlogrets)[2],12), dj_rp_performance$ea_volatilities, col="blue")
-plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio")
+plot(c(61:dim(mlogrets)[2]), dj_ew_performance$sharpes, main = "sharpe ratio", type = 'l', xlab = "month", ylab="sharpe ratio", ylim = c(-7, 6))
 lines(c(61:dim(mlogrets)[2]), dj_rp_performance$sharpes, col="blue")
 
 #kable
@@ -747,41 +739,36 @@ kable(dj_rp_performance_table, caption = "RP performance metrics")
 ## Question 1
 In this section, we will cover the computation of the ex-ante volatility estimate $\sigma_t$ for the DJ constituents.  The formula used is:
 
-$$\sigma_{s,t}^2 = 261\sum_{i = 0}^{260}(1-\delta)\delta^i(r_{s,t-1-i}-\bar{r}_{s,t})^2$$
+$$\sigma_{s,t}^2 = 12\sum_{i = 0}^{11}(1-\delta)\delta^i(r_{s,t-1-i}-\bar{r}_{s,t})^2$$
 
 Where the weights $\delta^i(1-\delta)$ add up to one, and $\bar{r}_{s,t}$ is the exponentially weighted average return computed similarly:
 
-$$\bar{r}_{s,t} = \sum_{i = 0}^{260}(1-\delta)\delta^ir_{s,t-1-i}$$
+$$\bar{r}_{s,t} = \sum_{i = 0}^{11}(1-\delta)\delta^ir_{s,t-1-i}$$
 
-So, first let's try to solve for $\delta$. We will retrieve the $\delta$ value using the same reasoning as Moskowitz in his journal, i.e. choose $\delta$ so that the centre of mass of the weights is:
-
-$$\sum_{i = 0}^{\infty} (1-\delta)\delta^ii = \frac{\delta}{1-\delta} = 60 days$$
-$$\delta = 60(1-\delta)$$
-$$61\delta = 60$$
-$$\delta = \frac{60}{61} = ~0.9836$$
+For this assignment, as instructed, we will use $\delta = 0.2$. 
 
 The code for implementing this computation in R is as follows:
 
 ```{r results = "hide"}
-ea_volatility <- function(retX_daily){
+ea_volatility <- function(retX){
 	#need to solve for delta
 	#according to paper delta has been solved for as
-	delta <- 60/61
+	delta <- 0.2
 	#number of stocks
-	num_stocks <- dim(retX_daily)[1]
+	num_stocks <- dim(retX)[1]
 	#number of periods provided
-	t <- dim(retX_daily)[2]
+	t <- dim(retX)[2]
 	#vector to hold the ex ante volatilities
 	ea_sd <- c()
 	#need to iterate over the stocks
 	for (s in seq(1, num_stocks)){
 		#compute the exponentially weighted returns
-		r_bar <- sum((1-delta)*(delta^c(0:260))*
-		rev(retX_daily[s, (t-261):(t-1)]))
+		r_bar <- sum((1-delta)*(delta^c(0:11))*
+		rev(retX[s, (t-12):(t-1)]))
 		#next the ex-ante volatility (annualized)
 		#first the variance
-		var <- 261*sum((1-delta)*(delta^c(0:260))*
-		(rev(retX_daily[s, (t-261):(t-1)])-r_bar)^2)
+		var <- 12*sum((1-delta)*(delta^c(0:11))*
+		(rev(retX[s, (t-12):(t-1)])-r_bar)^2)
 		#then add the ex-ante volatility of stock s to list
 		ea_sd <- c(ea_sd, sqrt(var))
 	}
@@ -791,3 +778,97 @@ ea_volatility <- function(retX_daily){
 } 
 ```
 
+#Part C
+## Question 1
+In this section, we will make it so that our position to the trading rule is determined by the magnitude of the signal. First, we will need to compute the expected *h*-period holding period return. We have been provided the technical indicator $F_t$:
+
+$$F_t = \sum_{i = 0}^{m - 2}d_ir_{t - i}$$
+
+As well as the *h*-period holding return expression:
+
+$$R_{t:t+h}=\sum_{j=0}^{h-1}F_{t+j}r_{t+j+1}=\sum_{j=0}^{h-1}\left(\sum_{i = 0}^{m - 2}d_ir_{t + j - i}\right)r_{t+j+1}$$
+
+The expected *h*-period holding period return is computed as follows:
+
+$$E(R_{t:t+h}) = E\left(\sum_{j=0}^{h-1}\left(\sum_{i = 0}^{m - 2}d_ir_{t + j - i}\right)r_{t+j+1}\right)$$
+$$= E(r_{t+1}(d_0r_{t} + d_1r_{t-1} + ... + d_{m-2}r_{t-m+2}) + ... + r_{t+h}(d_0r_{t+h-1} + ... + d_{m-2}r_{t+h-m+1}))$$
+$$= d_0(h\gamma_1) + d_1(h\gamma_2) + ... + d_{m-2}(h\gamma_{m-1})$$
+$$= h\sum_{i = 0}^{m-2}d_i\gamma_{i+1}$$
+
+The R-code for the computation of the expected *h*-period holding period return is as follows:
+
+```{r results = "hide"}
+e_hperiod_holdperiodreturn <- function(retX, m, r, h){
+	#get auto-covariances
+	acfs <- acf(retX, plot = F, type = "covariance", lag.max = m)$acf
+	#get expected holding period return
+	ehphpr <- h*sum(d(m,r)*acfs[2:length(acfs)])
+	#return value
+	ehphpr
+}
+```
+
+## Question 2
+In this section we will find the optimal double MA for all 30 DJ constituents that maximize the 12-period holding period return.  Please find enclosed below the R-function that was written to implement this:
+
+```{r results = "hide"}
+#Ques 2: optimal double MA for 30 DJ constituents maximizing 
+#	12-period holding period return.
+monthlyoptimalEHR_dma <- function(retX){
+	#to hold optimal m and r
+	optimal_m <- 2
+	optimal_r <- 1
+	#get ruleReturn for this setting
+	currEHR <- e_hperiod_holdperiodreturn(retX, 
+	optimal_m, optimal_r, 12)
+	#iterate up to 12 max as we are doing monthly
+	#loop through r
+	for (i in seq(1, 11)){
+		for (j in seq(i+1, 12)){
+			EHRij <- e_hperiod_holdperiodreturn(retX, 
+			j, i, 12)
+			if (EHRij > currEHR){
+				optimal_m <- j
+				optimal_r <- i
+				currEHR <- EHRij
+			} 
+		}
+	}
+	#return optimal double MA trading rules
+	list("monthlyoptimal_m"=optimal_m, "monthlyoptimal_r"=optimal_r)
+}
+
+monthlyoptimalsEHR_dma <- function(retsX){
+	#to hold the optimal trading rules
+	m <- c()
+	r <- c()
+	#amount of tickers to go through
+	numstocks <- dim(retsX)[1]
+	#number of periods/ months
+	months <- dim(retsX)[2]
+	for (i in seq(1, numstocks)){
+		optimals <- monthlyoptimalEHR_dma(retsX[i, 1:months])
+		#add optimals to list
+		m <- c(m, optimals$monthlyoptimal_m)
+		r <- c(r, optimals$monthlyoptimal_r)
+	} 
+	
+	#return optimal rules
+	list("monthlyoptimals_m"=m, "monthlyoptimals_r"=r)
+}
+```
+
+```{r, echo=FALSE}
+#get optimals for all 30 constituents
+dj_optimalsEHR <- monthlyoptimalsEHR_dma(mlogrets)
+
+#construct table
+djoptimalsEHR_table <- t(rbind(tickers, dj_optimalsEHR$monthlyoptimals_m,dj_optimalsEHR$monthlyoptimals_r))
+
+#column names
+colnames(djoptimalsEHR_table)[2:3] <- c("m", "r")
+
+#kable
+kable(djoptimalsEHR_table, caption = "DJ double MA trading rules for optimal expected 12-period holding period return")
+
+```
