@@ -520,8 +520,10 @@ rp_performance <- function(retX){
 e_hperiod_holdperiodreturn <- function(retX, m, r, h){
 	#get auto-covariances
 	acfs <- acf(retX, plot = F, type = "covariance", lag.max = m)$acf
+	#get expected log return
+	ER <- mean(retX)
 	#get expected holding period return
-	ehphpr <- h*sum(d(m,r)*acfs[2:length(acfs)])
+	ehphpr <- h*sum(d(m,r)*(acfs[2:length(acfs)] + (ER^2))) 
 	#return value
 	ehphpr
 }

@@ -792,8 +792,10 @@ The expected *h*-period holding period return is computed as follows:
 
 $$E(R_{t:t+h}) = E\left(\sum_{j=0}^{h-1}\left(\sum_{i = 0}^{m - 2}d_ir_{t + j - i}\right)r_{t+j+1}\right)$$
 $$= E(r_{t+1}(d_0r_{t} + d_1r_{t-1} + ... + d_{m-2}r_{t-m+2}) + ... + r_{t+h}(d_0r_{t+h-1} + ... + d_{m-2}r_{t+h-m+1}))$$
-$$= d_0(h\gamma_1) + d_1(h\gamma_2) + ... + d_{m-2}(h\gamma_{m-1})$$
-$$= h\sum_{i = 0}^{m-2}d_i\gamma_{i+1}$$
+$$= d_0(E(r_{t+1}r_{t}) + ... + E(r_{t+h}r_{t+h-1})) +  ... + d_{m-2}(E(r_{t+1}r_{t-m+2}) + ... + E(r_{t+h}r_{t+h-m+1}))$$
+$$= d_0(h\gamma_1 + hE(r_t)^2) + ... + d_{m-2}(h\gamma_{m-1} + hE(r_t)^2)$$
+$$= h\sum_{i = 0}^{m-2}d_i\gamma_{i+1} + hE(r_t)^2\sum_{i = 0}^{m-2}d_i$$
+$$= h\sum_{i = 0}^{m-2}d_i(\gamma_{i+1}+E(r_t)^2)$$
 
 The R-code for the computation of the expected *h*-period holding period return is as follows:
 
@@ -801,8 +803,10 @@ The R-code for the computation of the expected *h*-period holding period return 
 e_hperiod_holdperiodreturn <- function(retX, m, r, h){
 	#get auto-covariances
 	acfs <- acf(retX, plot = F, type = "covariance", lag.max = m)$acf
+	#get expected log return
+	ER <- mean(retX)
 	#get expected holding period return
-	ehphpr <- h*sum(d(m,r)*acfs[2:length(acfs)])
+	ehphpr <- h*sum(d(m,r)*(acfs[2:length(acfs)] + (ER^2))) 
 	#return value
 	ehphpr
 }
