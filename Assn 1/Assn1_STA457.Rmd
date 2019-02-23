@@ -346,8 +346,8 @@ windowsmonthlyoptimals_dma <- function(retX){
 Disclosed below are the optimal trading rules found for the constituents, using all the log return data:
 
 ```{r, echo=FALSE}
-dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Monthly"
-currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
+dataDir <- "C:/Users/Ling Long/Documents/GitHub/STA457-Assn1/Assn 1/DJ Data Monthly"
+currDir <- "C:/Users/Ling Long/Documents/GitHub/STA457-Assn1/Assn 1"
 
 monthlydata <- getAdC(dataDir, currDir)
 tickers <- monthlydata$tickers
@@ -732,7 +732,9 @@ ea_volatility_monthly <- function(retX){
 }
 ```
 
-Here, we use our function from above to pre-compute volatilies. In order to build the regression, we simply build datasets for every possible time lag h. For example, for h = 1, we will build a dataset with every possible value of t such that t-h is above 0, so that we can build a regression model using $r_{s,t}$ as the dependant variable, and our $sign(r_{s,t-h})$ as our independant variable. In order to judge the linear models for each value of H, we use the R-squared value, with higher being better. We note that building the dataset in this way tends to skew the optimal h-values in favor of larger h. If h is larger, the set of data points which we can build our model with is restricted, and it is possible that the linear model built using a smaller set of data points is very linear (having an R-squared value of close to 1), and as such will be chosen as our optimal H. 
+Here, we use our function from above to pre-compute volatilies. In order to build the regression, we simply build datasets for every possible time lag h. For example, for h = 1, we will build a dataset with every possible value of t such that t-h is above 0, so that we can build a regression model using $r_{s,t}$ as the dependant variable, and our $sign(r_{s,t-h})$ as our independant variable. In order to judge the linear models for each value of H, we use the R-squared value, with higher being better. We note that building the dataset in this way tends to skew the optimal h-values in favor of larger h. If h is larger, the set of data points which we can build our model with is restricted, and it is possible that the linear model built using a smaller set of data points is very linear (having an R-squared value of close to 1), and as such will be chosen as our optimal H. Additionally, we limit our lag values ($h_{s}$) to a range between 1-12, since we use 12 as our lag for several other questions and given. 
+
+We note that for this question that we are attempting to do regression with a binary variable (takes on either 1 or -1 unless 0) as our x data points, against different values of y. This can lead to very inaccurate measurements, due to the fact that regression with a binary variable has multiple issues with it.
 
 ```{r results = "hide"}
 predictive_regression <- function(retX){
@@ -746,7 +748,7 @@ predictive_regression <- function(retX){
   for (s in c(1:num_stocks)){
      max_r <- 0
      best_h <- c(50)
-     for (h in seq(1,228-12)){
+     for (h in seq(1,12)){
          y <- c()
          x <- c()
          for (t in seq(h, months)){
