@@ -294,7 +294,6 @@ monthlyoptimal_dma <- function(retX){
 }
 
 #functions that will implement the above for all constituents...
-
 #	retsX: the log returns of the constituents 
 
 monthlyoptimals_dma <- function(retsX){
@@ -317,7 +316,6 @@ monthlyoptimals_dma <- function(retsX){
 }
 
 #the version for the getting the optimal rules for each window
-
 #	retsX: the log returns of the constituents 
 
 windowsmonthlyoptimals_dma <- function(retX){
@@ -394,13 +392,13 @@ kable(optimal_rs, caption = "Optimal r's for the rolling windows")
 ## Question 2
 In this section, we will construct the equally weighted (EW) and risk-parity (RP) weighted portfolios using the 30 DJ constituents and summarize the performance.  
 
-As per general instruction, performance will be based on a 60-month rolling window and the portfolio will be rebalanced monthly.  The parameters ($\sigma$) will be calibrated/ estimated at the end of each year.
+As per general instruction, performance will be based on a 60-month rolling window and the portfolio will be rebalanced monthly (i.e. asset positions will be decided using predicted signals on a monthly basis).  The parameters ($\sigma$) will be calibrated/ estimated at the end of each year.
 
 The following assumptions are going to be made:
 
   1. Will use the 60-month window to get optimal trading rules.
   
-  2. Will use these optimal settings to predict the signals for next month
+  2. Will use these optimal settings to predict the signals for next 12 months
   
   3. For risk parity, will use the last 12 months of window to calibrate the asset volatilities (see section B) as brought up earlier.
   
@@ -656,6 +654,13 @@ kable(dj_ew_performance_table, caption = "EW performance metrics")
 kable(dj_rp_performance_table, caption = "RP performance metrics")
 ```
 
+### Remarks
+A few things to note from the observations above:
+
+  1. The risk parity portfolio has less volatility than the equally weighted portfolio.  This is expected as risk parity seeks equal risk exposure from all assets in the portfolio, so less weight is allocated to more risky assets in comparison to the equally weighted portfolio. 
+  
+  2. Building on earlier point, since more risk is associated with more reward and the equally weighted portfolio allocates more weight to the more risky assets, it has a higher earning potential at the expense of more risk. This matches the observation of the equally weighted portfolio generating a higher return than the risk parity portfolio above.    
+
 # Part B
 ## Question 1
 In this section, we will cover the computation of the ex-ante volatility estimate $\sigma_t$ for the DJ constituents.  The formula used is:
@@ -710,7 +715,7 @@ $$\frac{r_{s,t}}{\sigma_{s,t-1}} = a + b_{h}\cdot sign(r_{s, t-h}) + \xi_{s,t}  
 
 We compute $\sigma_{s,t}$ for all possible combinations s, t before we loop through potential h values, in order to reduce computational time. Since we now use the past 12 months of data to calculate the variance, we actually range through 12x18 months instead of 12x19.
 
-First, we use the $ea_volatility$ function defined in part 1 to construct our matrix of ex-ante volatilities, since we need the volatility one step backwards in time at any point for our regression model. We implement this by simply looping over the possible months, and computing the volatility at each point and putting it into a matrix.
+First, we use the *ea_volatility* function defined in part 1 to construct our matrix of ex-ante volatilities, since we need the volatility one step backwards in time at any point for our regression model. We implement this by simply looping over the possible months, and computing the volatility at each point and putting it into a matrix.
 
 ```{r results = "hide"}
 ea_volatility_monthly <- function(retX){
@@ -795,15 +800,15 @@ The following assumptions are going to be made:
 
   1. The 60-month window rolling window will be applied to the model.
   
-  2. The last 12 months of data will be used to calculate our signal to predict the next month..
+  2. The last 12 months of data will be used to calculate our signal to predict the next month.
   
   3. The last 12 months will be used calibrate the asset volatilities as described in Question 1 of Part B.
   
   4. We will use predicted signal and portfolio weights to get rule return of portfolio.
   
-  5. Check performance of next month using predicted signal.  Since we recalibrate parameters annually (i.e. at end of each year), we will re-calculate the ex-ante volatilities every 12 months.
+  5. Check performance of next 12 months using predicted signals.  Since we recalibrate parameters annually (i.e. at end of each year), we will re-calculate the ex-ante volatilities every 12 months.
   
-  6. The 60-month window moves 1 months ahead (as we rebalance monthly as per general instructions) and we repeat (1-5).  Process terminates when we reach the end of our data.
+  6. The 60-month window moves 12 months ahead and we repeat (1-5).  Process terminates when we reach the end of our data.
   
 Here, we have that the returns are determined as:
 $$
@@ -838,14 +843,15 @@ tsmom_performance <- function(retX){
     #Ok, now we use the optimal trading rules to find the 
     #ruled return for each stock
     #to hold portfolio weights
-    # weigh them as 0.4/volatility
-    temp <- 0.4/ea_sd_i
-    weights <- temp/sum(temp)
+    # weigh them as 1/30 (this matches the expression)
+    weights <- rep(1/num_stocks, num_stocks)
     
     #this is the portfolio variance
     var_t <- 0
     for (s in seq(1, num_stocks)){
-      var_t <- var_t + (weights[s]^2)*ea_sd_i[s]^2
+      #TSMOM portfolio set up so that each position has ex-ante 
+      # volatility of 0.4
+      var_t <- var_t + (weights[s]^2)*0.4^2
     }
     
     ea_sd <- c(ea_sd, sqrt(var_t))
@@ -887,7 +893,7 @@ tsmom_performance <- function(retX){
 dj_tsmom_performance <- tsmom_performance(mlogrets)
 
 #code for having this in a table
-dj_tsmom_performance_table <- t(rbind(round((dj_tsmom_performance$return)/10,4),  round((dj_tsmom_performance$volatility),4), round(((dj_tsmom_performance$sharpe)/10),4)))
+dj_tsmom_performance_table <- t(rbind(round((dj_tsmom_performance$return),4),  round((dj_tsmom_performance$volatility),4), round(((dj_tsmom_performance$sharpe)),4)))
 
 colnames(dj_tsmom_performance_table)[1:3] <- c("Annualized expected return",  "Annualized volatility","Annualized sharpe ratio")
 
@@ -903,7 +909,7 @@ plot(c(61:dim(mlogrets)[2]), dj_tsmom_performance$sharpes, main = "sharpe ratio"
 
  
 #kable
-kable(dj_tsmom_performance_table, caption = "EW performance metrics")
+kable(dj_tsmom_performance_table, caption = "TSMOM performance metrics")
 
 ```
 
@@ -981,7 +987,7 @@ monthlyoptimalEHR_dma <- function(retX){
 	list("monthlyoptimal_m"=optimal_m, "monthlyoptimal_r"=optimal_r)
 }
 
-# retsX: monthly log returns
+# retsX: monthly log returns of constituents
 
 monthlyoptimalsEHR_dma <- function(retsX){
 	#to hold the optimal trading rules
@@ -1003,8 +1009,7 @@ monthlyoptimalsEHR_dma <- function(retsX){
 }
 
 #the version for the getting the optimal rules for each window
-
-# retX: monthly log returns
+# retX: monthly log returns of constituents
 
 windowsmonthlyoptimalsEHR_dma <- function(retX){
 	#number of stock
