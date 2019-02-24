@@ -280,9 +280,12 @@ monthlyoptimal_dma <- function(retX){
 	#iterate up to 12 max as we are doing monthly
 	#loop through r
 	for (i in seq(1, 11)){
+	  #loop through m
 		for (j in seq(i+1, 12)){
-			ERij <- ruleReturn(retX, j, i)$ER
-			if (ERij > currER){
+			#get expected ruled return for these settings
+		  ERij <- ruleReturn(retX, j, i)$ER
+			#update current best if return is higher
+		  if (ERij > currER){
 				optimal_m <- j
 				optimal_r <- i
 				currER <- ERij
@@ -346,8 +349,8 @@ windowsmonthlyoptimals_dma <- function(retX){
 Disclosed below are the optimal trading rules found for the constituents, using all the log return data:
 
 ```{r, echo=FALSE}
-dataDir <- "C:/Users/Ling Long/Documents/GitHub/STA457-Assn1/Assn 1/DJ Data Monthly"
-currDir <- "C:/Users/Ling Long/Documents/GitHub/STA457-Assn1/Assn 1"
+dataDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1/DJ Data Monthly"
+currDir <- "/Users/amanull9/Documents/STA457/Assignments/STA457-Assn1/Assn 1"
 
 monthlydata <- getAdC(dataDir, currDir)
 tickers <- monthlydata$tickers
@@ -499,7 +502,8 @@ ew_performance <- function(retX){
 		
 		ea_sd <- c(ea_sd, sqrt(var_t))
 		
-		#going back to old method
+		#use optimal trading rules to get predicted signals
+		# for next 12 months and subsequently compute performance
 		for (t in seq(i + 60, i + 72 -1)){
 			if (t <= months){
 				re_t <- 0
@@ -521,8 +525,6 @@ ew_performance <- function(retX){
 				sharpe_t <- (ere[length(ere)]-0.02)/
 				ea_sd[length(ea_sd)]
 				sharpes <- c(sharpes, sharpe_t)
-				#note that since this is a EW portfolio, there is 
-				#	no rebalancing step as weights remain the same 
 			}
 		}
 		
@@ -537,6 +539,7 @@ ew_performance <- function(retX){
 }
 
 #risk parity function
+#	retX: 30X(periods) dim matrix of monthly log returns
 rp_performance <- function(retX){
 	#number of stocks provided
 	num_stocks <- dim(retX)[1]
@@ -565,7 +568,7 @@ rp_performance <- function(retX){
 		#Ok, now we use the optimal trading rules to find the 
 		#	ruled return for each stock
 		#to hold portfolio weights
-		#this is an ew portfolio so all weights are the same
+		#Obtain weights for rp portfolio as disclosed in assignment
 		temp <- 1/ea_sd_i
 		weights <- temp/sum(temp)
 		
@@ -599,8 +602,6 @@ rp_performance <- function(retX){
 				sharpe_t <- (ere[length(ere)]-0.02)/
 				ea_sd[length(ea_sd)]
 				sharpes <- c(sharpes, sharpe_t)
-				#note that since this is a EW portfolio, there is 
-				#	no rebalancing step as weights remain the same 
 			}
 		}
 		
@@ -676,9 +677,11 @@ For this assignment, as instructed, we will use $\delta = 0.2$.
 The code for implementing this computation in R is as follows:
 
 ```{r results = "hide"}
+#Function takes the log return data and returns the ex-ante 
+# volatilities of the constituents
+#	retX: 30X(periods) dim matrix of monthly log returns
 ea_volatility <- function(retX){
-	#need to solve for delta
-	#according to paper delta has been solved for as
+	#delta set to 0.2 as instructed
 	delta <- 0.2
 	#number of stocks
 	num_stocks <- dim(retX)[1]
@@ -969,15 +972,17 @@ monthlyoptimalEHR_dma <- function(retX){
 	#to hold optimal m and r
 	optimal_m <- 2
 	optimal_r <- 1
-	#get ruleReturn for this setting
+	#get expected holding return for this setting
 	currEHR <- e_hperiod_holdperiodreturn(retX, 
 	optimal_m, optimal_r, 12)
 	#iterate up to 12 max as we are doing monthly
 	#loop through r
 	for (i in seq(1, 11)){
-		for (j in seq(i+1, 12)){
+		#loop through m
+	  for (j in seq(i+1, 12)){
 			EHRij <- e_hperiod_holdperiodreturn(retX, 
 			j, i, 12)
+			#update current best if expected holding return exceeded
 			if (EHRij > currEHR){
 				optimal_m <- j
 				optimal_r <- i
